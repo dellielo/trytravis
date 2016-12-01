@@ -1,0 +1,914 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <title>kahelo</title>
+    <meta http-equiv="Content-Language" content="en-us" />
+    <meta http-equiv="Content-Type" content="text/html; charset=us-ascii" />
+    <meta name="description" content="kahelo" />
+    <meta name="keywords" content="kahelo, gps, gpx, tiles, map" />
+
+    <style type="text/css">
+        body {
+            margin-top:0.5in;
+            margin-right:0.8in;
+            margin-bottom:0.5in;
+            margin-left:1.3in;
+            font-family:arial;
+            font-size:10pt;
+        }
+
+        code, pre, h1, h2, h3, h4 { color:#0B5394; }
+
+        h1 { text-align:left; margin-top:10mm; margin-bottom:0; }
+        h2 { text-align:left; font-size:larger; margin-top:0; margin-bottom:5mm; }
+
+        p.contents { font-size:105%; margin-top:0; margin-left:0; margin-bottom:0; margin-right:0; }
+        p.contents-top { font-size:105%; margin-left:0; margin-bottom:0; margin-right:0; }
+        p.contents-bot { font-size:105%; margin-top:0; margin-left:0; margin-right:0; }
+        a.contents:link, a.contents:visited { color:#0B5394; text-decoration:none; }
+        a.contents:hover { color:#000000; text-decoration:none; }
+
+        a:link, a:visited { color:#0B5394; text-decoration:underline; }
+        a:hover { color:#000000; text-decoration:underline; }
+
+        code.title { font-size:larger; font-weight:bold; margin-top:0;
+                     line-height: 2px; margin-bottom:0px; }
+        /*code.title2 { line-height: 0.2; }
+        p.title2 { margin-bottom:15pt; }*/
+        p.title2 { line-height: 1; margin-top:0; margin-bottom:5pt; }
+
+        hr { margin-left:-0.4in }
+        hr.light { color:#C0C0C0; margin-bottom:20px; }
+        div.term { display: inline-block; width: 80pt; }
+        div.descr { display: inline-block; }
+        div.col1 {width:170px;float:left;display:inline-block;padding-bottom:10px;}
+        div.col2 {margin-left:170px;padding-bottom:10px;}
+        div.col3 {width:80pt;float:left;display:inline-block}
+        div.col4 {margin-left:80pt}
+        ul { margin-left:0.15in; padding-left:0px; }
+    </style>
+</head>
+
+<body>
+
+    <h1>kahelo</h1>
+
+    <h2>Tile management for GPS maps</h2>
+
+    <hr />
+    <h3 id="Contents">
+        Contents</h3>
+    <hr size="1" color="#C0C0C0" />
+    <p style="font-size:1px">&nbsp;</p>
+
+    <p class="contents-top">
+        <a class="contents" href="#GeneralInformation">General Information</a></p>
+    <p class="contents">
+        <a class="contents" href="#Usage">Usage</a></p>
+    <p class="contents">
+        <a class="contents" href="#CommandSummary">Command summary</a></p>
+    <p class="contents">
+        <a class="contents" href="#Databases">Databases</a></p>
+    <p class="contents">
+        <a class="contents" href="#TileSets">Tile sets</a></p>
+    <p class="contents">
+        <a class="contents" href="#Commands">Commands</a></p>
+    <p class="contents-bot">
+        <a class="contents" href="#ConfigurationFile">Configuration file</a>
+    </p>
+    <p style="font-size:1px">&nbsp;</p>
+
+    <hr id="GeneralInformation" />
+    <h3>General Information</h3>
+    <hr size="1" color="#C0C0C0" />
+
+    <h4>Description</h4>
+    <p>
+        <code>kahelo</code> is a command line application dedicated to create
+        and manage tile databases. Tiles are the pieces of image used by slippy
+        maps as Google Maps, Map Quest or OpenStreetMap. GPS applications as
+        RMaps, Maverick, etc. may work off-line provided maps have been
+        downloaded.
+    </p>
+    <p>
+        Some utilities already exist to define areas of interest and download
+        tiles. <code>kahelo</code> is an alternative emphasizing on database
+        management and tile set definition. It handles currently RMaps/Locus and
+        Maverick database format.
+    </p>
+    <p style="font-size:1px">&nbsp;</p>
+
+    <hr size="1" color="#C0C0C0" />
+    <h4>Platform</h4>
+    <p>
+        <code>kahelo</code> is a Python program. As such, it can run on any
+        platform supporting Python. Note that PIL (the Python Imaging Library)
+        must be installed.
+    </p>
+    <p>
+        For MS Windows, it is additionally available as an executable file
+        packaged in a zip file.
+    </p>
+    <p>
+        For Android, it can run with some limitations (no sqlite databases)
+        under QPython.
+    </p>
+    <p style="font-size:1px">&nbsp;</p>
+
+    <hr size="1" color="#C0C0C0" />
+    <h4>Licence</h4>
+    <p>
+        <code>kahelo</code> is licensed under the MIT licence.
+    </p>
+    <p style="font-size:1px">&nbsp;</p>
+
+    <hr size="1" color="#C0C0C0" />
+    <h4>Links and contact</h4>
+    <ul>
+        <li><a href="http://kahelo.godrago.net">Home page</a></li>
+        <li><a href="http://kahelo.godrago.net/kahelo-py-1.00.zip">Download script</a></li>
+        <li><a href="http://kahelo.godrago.net/kahelo-exe-1.00.zip">Download Windows executable</a></li>
+        <li><a href="http://code.google.com/p/kahelo/">Repository</a></li>
+        <li>Mail to: gilles dot arcas at gmail dot com</li>
+    </ul>
+    <p style="font-size:1px">&nbsp;</p>
+
+    <hr id="Usage"/>
+    <h3>Usage</h3>
+    <hr size="1" color="#C0C0C0" />
+    <p style="font-size:1px">&nbsp;</p>
+
+    <p>
+        <code>kahelo</code> is a console program that receives information
+        from the command line. The format of the command line is:
+    </p>
+    <pre>kahelo.py &lt;command&gt; &lt;database name&gt; [options]
+    </pre>
+    <p>
+        Example to insert into a database the tiles from some track file:
+    </p>
+    <pre>kahelo.py -insert somedatabase -zoom 12 -track \somepath\somefile.gpx
+    </pre>
+    <p>
+        Exporting all tiles from some database into a second one:
+    </p>
+    <pre>kahelo.py -export some_database -records -destination some_other_database
+    </pre>
+    <p>
+        Options may be shortened if there is no ambiguities. The previous
+        command line may be abbreviated as:
+    </p>
+    <pre>kahelo.py -exp some_database -rec -dest some_other_database
+    </pre>
+
+    <hr id="CommandSummary" />
+    <h3>Summary of commands</h3>
+    <hr size="1" color="#C0C0C0" />
+    <p style="font-size:1px">&nbsp;</p>
+
+    <ul>
+        <li><div class="col3"><code>-help</code></div>
+            <div class="col4">display help information on the command line window</div></li>
+        <li><div class="col3"><code>-Help</code></div>
+            <div class="col4">open browser and display this html help file</div></li>
+        <li><div class="col3"><code>-version</code></div>
+            <div class="col4">display version on the command line window</div></li>
+        <li><div class="col3"><code>-license</code></div>
+            <div class="col4">display license notice on the command line window</div></li>
+        <li><div class="col3"><code>-describe</code></div>
+            <div class="col4">connect with database</div></li>
+        <li><div class="col3"><code>-insert</code></div>
+            <div class="col4">download and insert into database the tiles from a tile set</div></li>
+        <li><div class="col3"><code>-import</code></div>
+            <div class="col4">import into database the tiles from a tile set</div></li>
+        <li><div class="col3"><code>-export</code></div>
+            <div class="col4">export to another database the tiles from a tile set</div></li>
+        <li><div class="col3"><code>-delete</code></div>
+            <div class="col4">delete the tiles from a tile set</div></li>
+        <li><div class="col3"><code>-view</code></div>
+            <div class="col4">generate an image from the tiles from a tile set</div></li>
+        <li><div class="col3"><code>-server</code></div>
+            <div class="col4">start html server serving tiles from database</div></li>
+        <li><div class="col3"><code>-count</code></div>
+            <div class="col4">count the tiles in database from a tile set</div></li>
+        <li><div class="col3"><code>-stat</code></div>
+            <div class="col4">give some statistic about the tiles in database from a tile set</div></li>
+    </ul>
+    <p>
+        All these commands may be abbreviated as long as there is no conflict
+        with other commands or options. By default, the trace level is moderate
+        but it can be reduced of extended by using the options
+        <code>-quiet</code> or <code>-verbose</code>.
+    </p>
+    <p style="font-size:1px">&nbsp;</p>
+
+    <hr id="Databases" />
+    <h3>Databases</h3>
+    <hr size="1" color="#C0C0C0" />
+    <p style="font-size:1px">&nbsp;</p>
+
+    <p>
+        To be handled by <code>kahelo</code>, a database is described with
+        three attributes:
+    </p>
+    <ul>
+        <li>the format of the database,</li>
+        <li>the format of the tile images,</li>
+        <li>the url template of the tile server associated to the database.</li>
+    </ul>
+    <p>
+        These attributes are set with the <code>-describe</code> command, only
+        the first one being mandatory. All the commands described bellow assume
+        that the databases given as argument have a description file. In the
+        contrary, an error is launched and a message reminds to describe the
+        database.
+    </p>
+    <p>
+        Note that the attributes are stored in a text file which name is the one
+        of the database with added extension '.properties'.
+    </p>
+    <p style="font-size:1px">&nbsp;</p>
+    <hr size="1" color="#C0C0C0" />
+    <h4>Database formats</h4>
+
+    <p>
+        <code>kahelo</code> handles currently four tile database formats:
+    </p>
+
+    <ul>
+        <li><div class="col3"><code>rmaps</code></div>
+            <div class="col4">
+                tiles are stored in a sqlite3 database. Tile timestamps are not
+                stored.
+            </div></li>
+        <li><div class="col3"><code>kahelo</code></div>
+            <div class="col4">
+                another sqlite3 database but able to store tile timestamps.
+            </div></li>
+        <li><div class="col3"><code>maverick</code></div>
+            <div class="col4">
+                tiles are stored in a directory structure with path names using
+                zoom levels and coordinates.
+            </div></li>
+        <li><div class="col3"><code>folder</code></div>
+            <div class="col4">
+                same as maverick format except than tile files do not use a
+                .tile extension.
+            </div></li>
+    </ul>
+
+    <p style="font-size:1px">&nbsp;</p>
+    <hr size="1" color="#C0C0C0" />
+    <h4>Tile image formats</h4>
+
+    <p>
+        <code>kahelo</code> handles currently three image formats:
+    </p>
+    <ul>
+        <li><div class="col3"><code>jpg</code></div>
+            <div class="col4">
+                Used to store tile images in JPG format. The default quality
+                factor is 85 and can be changed in the configuration file.
+            </div></li>
+        <li><div class="col3"><code>png</code></div>
+            <div class="col4">
+                Used to store tile images in PNG format. 256 colors are used
+                when converting to PNG.
+            </div></li>
+        <li><div class="col3"><code>server</code></div>
+            <div class="col4">
+                This enables to store the tile images from the tiles server
+                without any conversion.
+            </div></li>
+    </ul>
+
+    <p style="font-size:1px">&nbsp;</p>
+    <hr size="1" color="#C0C0C0" />
+    <h4>URL templates</h4>
+
+    <p>
+        URL templates are used to construct the URL of tile images. In this
+        template, the {x}, {y} and {z} placeholders are replaced
+        respectively with the x,y coordinates of the tiles to download and the
+        desired zoom level. A tile server may be accessed through various urls
+        differing from one character. This can be specified with a set of
+        characters inside brackets. When downloading a tile, one of these
+        characters are selected at random.
+    </p>
+    <p>
+        Some examples of url templates:
+    </p>
+    <pre>
+http://[abc].tile.opencyclemap.org/cycle/{z}/{x}/{y}.png
+http://otile[1234].mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg</pre>
+    <p>
+        In the case of these two templates, it is actually simpler to use their
+        aliases, respectively the symbols <code>OpenCycleMap</code> and
+        <code>MapQuest</code>.
+    </p>
+    <p style="font-size:1px">&nbsp;</p>
+
+    <hr id="TileSets"/>
+    <h3>Tile sets</h3>
+    <hr size="1" color="#C0C0C0" />
+    <p style="font-size:1px">&nbsp;</p>
+
+    <p>
+        Tile sets are used in all commands to describe the tiles to work on. A
+        set of tiles may be specified with:
+    </p>
+    <ul>
+        <li>
+            A source, which can be a gpx file used as a track or a contour
+            (<code>-track</code>, <code>-tracks</code>, <code>-contour</code>,
+            <code>-contours</code>), a project (a file of tile descriptions,
+            <code>-project</code>), the tiles already in the database
+            (<code>-records</code>), or the tiles inside a rectangle specified
+            in tile units (<code>-tiles</code>),
+        </li>
+        <li>
+            a zoom level or set of zoom levels (<code>-zoom</code>),
+        </li>
+        <li>
+            an optional radius covering the area around each point of the track
+            (<code>-radius</code>),
+        </li>
+        <li>
+            the <code>-inside</code> parameter limiting the tile set to the
+            tiles already inside the database given as argument of the current
+            command.
+        </li>
+    </ul>
+    <p>
+        Some examples of tile sets:
+    </p>
+    <pre>
+-track mytrack.gpx -zoom 10,12-14 -radius 1.5
+-contour mycontour.gpx -zoom 18 -inside
+-contours mytrack.gpx -zoom 15-18/16
+-project myproject.project
+-records -zoom 16 </pre>
+
+    <p style="font-size:1px">&nbsp;</p>
+    <hr size="1" color="#C0C0C0" />
+    <h4>Tracks and contours</h4>
+
+    <p>
+        The track and contour parameters specify gpx files to generate tile
+        images. They are used as follow:
+    </p>
+    <ul>
+        <li><div class="col3"><code>-track</code></div>
+            <div class="col4">
+                Tiles are generated along the points of the track. If there are
+                several gpx segments, they are considered connected.
+            </div></li>
+        <li><div class="col3"><code>-tracks</code></div>
+            <div class="col4">
+                Tiles are generated along the points of the track. If there are
+                several gpx segments, each one is considered separately.
+            </div></li>
+        <li><div class="col3"><code>-contour</code></div>
+            <div class="col4">
+                Tiles are also generated for the interior of the track. If there
+                are several gpx segments, they are considered connected.
+            </div></li>
+        <li><div class="col3"><code>-contours</code></div>
+            <div class="col4">
+                In that case, each gpx segment is considered as a separate
+                contour.
+            </div></li>
+    </ul>
+    <p/>
+
+    <p style="font-size:1px">&nbsp;</p>
+    <hr size="1" color="#C0C0C0" />
+    <h4>Projects</h4>
+    <p>
+        A project is a text file containing a list of tile set specifiers,
+        <code>-track(s)</code>, <code>-contour(s)</code>,
+        <code>-records</code>, <code>-tiles</code>, and even
+        <code>-project</code>. Each one of the specifiers may have its own zoom
+        and radius specification, or <code>-inside</code> parameter.
+    </p>
+
+    <p>
+        Project example:</p>
+    <pre>
+; eurovelo6 Bratislava to Budapest
+-track bratislava-budapest.gpx -zoom 10-14 -radius 2
+-contour bratislava.gpx -zoom 14
+-contour budapest.gpx -zoom 14
+</pre>
+    <p>
+        Projects are convenient to handle various gpx files in a single command.
+        To help use them from any folder, the files appearing in the project
+        are searched for either as absolute path, relatively to the current
+        path, or relatively to the path of the project file.
+    </p>
+    <p>
+        Note that:
+    </p>
+    <ul>
+        <li>Semicolons work as comments: all text after a semicolon is
+        ignored.</li>
+        <li>When a project is given with a zoom argument, the zoom levels
+        actually used are the intersection of the zoom levels given as argument,
+        and the zoom levels in each line of the project.</li>
+        <li>When a project is given with a radius, the radius actually used is
+        the minimum between this value and the radius given on each line of the
+        project.</li>
+    </ul>
+
+    <p style="font-size:1px">&nbsp;</p>
+    <hr size="1" color="#C0C0C0" />
+    <h4>Database tile set</h4>
+    <p>
+        It is possible to refer to the tiles already inserted into the database
+        by using the argument <code>-records</code>. The <code>-zoom</code>
+        argument may be used to limit the zoom levels to work on. When it is
+        absent, all tiles in the database are considered. Note that if a
+        database tile set is described with a radius, this is considered as an
+        error.
+    </p>
+    <p>
+        Counting all tiles in database:
+    </p>
+    <p><code>
+        kahelo -count mydatabase.db -records
+    </code></p>
+    <p>
+        Exporting tiles from zoom level 10 to level 12 to a second database:
+    </p>
+    <p><code>
+        kahelo -export mydatabase.db -records -zoom 10-12 -dest anotherdatabase.db
+    </code></p>
+    <p>
+        Note that <code>-records</code> refers always to the database given
+        after the command parameter.
+    </p>
+
+    <p style="font-size:1px">&nbsp;</p>
+    <hr size="1" color="#C0C0C0" />
+    <h4>Tile rectangle</h4>
+    <p>
+        It is possible to define a rectangle area by using the
+        <code>-tiles</code> specifier followed by the rectangle coordinates
+        expressed in tile units ("xmin,ymin,xmax,ymax" comma separated without
+        any space) .
+    </p>
+    <p>
+        For instance, the whole earth map is defined as follow at zoom level 8:
+    </p>
+    <p><code>
+        -tiles 0,0,255,255 -zoom 8
+    </code></p>
+
+    <p style="font-size:1px">&nbsp;</p>
+    <hr size="1" color="#C0C0C0" />
+    <h4>Intersection with database</h4>
+    <p>
+
+    </p>
+    <p>
+        In some cases, it is convenient or necessary to consider the
+        intersection of the tile set with the tiles already in the database.
+        This is done by using the <code>-inside</code> parameter.
+    </p>
+
+    <p style="font-size:1px">&nbsp;</p>
+    <hr size="1" color="#C0C0C0" />
+    <h4>Zoom</h4>
+
+    <p>
+        A single zoom level, or a set of zoom levels may be given with the
+        <code>-zoom</code> parameter. A set of zoom levels may be a range as in
+        12-15, or a list of single values or ranges separated by commas.
+    </p>
+    <pre>
+-zoom 12
+-zoom 12,14,16
+-zoom 10-14,16</pre>
+    <p>Note that:</p>
+    <ul>
+        <li>The <code>-zoom</code> parameter is mandatory when using
+        <code>-track</code> and <code>-contour</code> options.</li>
+        <li>Zoom levels are integers from 0 to 18.</li>
+    </ul>
+
+    <p style="font-size:1px">&nbsp;</p>
+    <hr size="1" color="#C0C0C0" />
+    <h4>Zoom subdivision</h4>
+
+    <p>
+        Using contours for large zoom levels may generate too many tiles to be
+        handled. The workaround proposed by <code>kahelo</code> is to
+        generate the tiles at a lower zoom level and to subdivise these tiles at
+        the target zoom level. This is specified as follow:
+    </p>
+    <pre>
+-zoom 18/16</pre>
+    <p>
+        This means that the tiles of the contour will be generated only to level
+        16. When processing the command, the tiles from level 16 will be
+        subdivided up to level 18.
+    </p>
+
+    <p style="font-size:1px">&nbsp;</p>
+    <hr size="1" color="#C0C0C0" />
+    <h4>Radius</h4>
+
+    <p>
+        The radius enables to include in the tile set all tiles intersecting the
+        circles with the given radius and centered on each point of the track or
+        contour. It is given with the option <code>-radius</code> but may be
+        omitted.
+    </p>
+    <p>
+        When the radius is omitted, the default value is half the width of a
+        tile.
+    </p>
+    <p>
+        Note that:
+    </p>
+    <ul>
+        <li>The radius is expressed in kilometers.</li>
+        <li>To not include any extra tile just give a radius with value 0.</li>
+    </ul>
+    <pre>
+-radius 1.5
+-radius 0</pre>
+
+    <p style="font-size:1px">&nbsp;</p>
+    <hr id="Commands" />
+    <h3>Commands</h3>
+
+    <hr class="light" size="1" />
+    <p><code class="title">
+        -describe
+    </code></p>
+    <p class="title2"><code class="title2">
+        -describe &lt;database name&gt; -db_format &lt;database format&gt; -tile_format &lt;tile format&gt; -url_template &lt;url template&gt;
+    </code></p>
+    <p/>
+
+    <p>
+        This command connects kahelo to a database. It enables to give the
+        three parameters describing a database: its format, the format of the
+        tile images and the url template of the tile server associated with the
+        database.
+    </p>
+    <p>
+        Any number of parameters may be given with this command. In any case,
+        including when no parameters are given, the current set of parameters
+        associated with the database is displayed.
+    </p>
+
+    <hr class="light" size="1" />
+    <p><code class="title">
+        -insert
+    </code></p>
+    <p class="title2"><code class="title2">
+        -insert &lt;database name&gt; &lt;tile set&gt; [-force]
+    </code></p>
+    <p/>
+
+    <p>
+        Download tiles from the server associated to the database and inserts
+        them in the database. If the <code>-force</code> option is present, all
+        tiles from the set are downloaded and inserted, otherwise only the tiles
+        older than the expiry date are considered.
+    </p>
+    <p>
+        The expiry date is stored in the configuration file.
+    </p>
+
+    <hr class="light" size="1" />
+    <p><code class="title">
+        -import
+    </code></p>
+    <p class="title2"><code class="title2">
+        -import &lt;database name&gt; &lt;tile set&gt; -source &lt;database name&gt; [-force]
+    </code></p>
+    <p/>
+
+    <p>
+        Import tiles from another database. See the <code>-insert</code> command
+        for the description of the <code>-force</code> option.
+    </p>
+
+    <hr class="light" size="1" />
+    <p><code class="title">
+        -export
+    </code></p>
+    <p class="title2"><code class="title2">
+        -export &lt;database name&gt; &lt;tile set&gt; -destination &lt;database name&gt; [-force]
+    </code></p>
+    <p/>
+
+    <p>
+        Export tiles to another database. See the <code>-insert</code> command
+        for the description of the <code>-force</code> option. Note that
+        <code>-export</code> is equivalent to <code>-import</code> with database
+        arguments swapped except when using <code>-records</code>. In that case,
+        the tile set is always constructed from the first database argument.
+    </p>
+
+    <hr class="light" size="1" />
+    <p><code class="title">
+        -delete
+    </code></p>
+    <p class="title2"><code class="title2">
+        -delete &lt;database name&gt; &lt;tile set&gt;
+    </code></p>
+    <p/>
+
+    <p>
+        Delete the tiles from the tile set.
+    </p>
+
+    <hr class="light" size="1" />
+    <p><code class="title">
+        -view
+    </code></p>
+    <p class="title2"><code class="title2">
+        -view &lt;database name&gt; &lt;tile set&gt; [-image &lt;image name&gt;]
+    </code></p>
+    <p/>
+
+    <p>
+        Make an image with tiles from the tile set. If the output image is not
+        given, the image is displayed in the default viewer.
+    </p>
+
+    <hr class="light" size="1" />
+    <p><code class="title">
+        -server
+    </code></p>
+    <p class="title2"><code class="title2">
+        -server &lt;database name&gt;
+    </code></p>
+    <p/>
+
+    <p>
+        Starts a tile server with the tiles from the database given as argument.
+        The default port is 80 and is defined in the configuration file. With
+        this port number, the url template for the server is:
+    </p>
+    <p><code>http://127.0.0.1:80/{z}/{x}/{y}.jpg</code></p>
+
+    <hr class="light" size="1" />
+    <p><code class="title">
+        -count
+    </code></p>
+    <p class="title2"><code class="title2">
+        -count &lt;database name&gt; &lt;tile set&gt;
+    </code></p>
+    <p/>
+
+    <p>
+        Count the number of tiles in the database for the tile set specified in
+        the command line. The following information is delivered:
+    </p>
+    <ul>
+        <li>number of tiles covering the area covered by the tile set,</li>
+        <li>number of valid tiles present in the database for this tile set,</li>
+        <li>number of expired tiles present in the database for this tile set,</li>
+        <li>missing tiles for this tile set.</li>
+    </ul>
+
+    <hr class="light" size="1" />
+    <p><code class="title">
+        -stat
+    </code></p>
+    <p class="title2"><code class="title2">
+        -stat &lt;database name&gt; &lt;tile set&gt;
+    </code></p>
+    <p/>
+
+    <p>
+        Return statistics about size of tiles in the database, as well as the
+        coordinates of the rectangle bounding the area covered by the tiles for
+        each zoom level. These coordonates are given in tile coordinates and
+        degrees.
+    </p>
+    <p style="font-size:1px">&nbsp;</p>
+
+    <hr id="ConfigurationFile" />
+    <h3>Configuration file</h3>
+    <hr size="1" color="#C0C0C0" />
+    <p style="font-size:1px">&nbsp;</p>
+
+    <p>
+        Some parameters are not accessible on the command line but by editing
+        a configuration file, named kahelo.config and created at the first
+        utilisation. They concern more advanced settings.
+    </p>
+
+    <hr size="1" color="#C0C0C0" />
+    <h4><code>[database]</code></h4>
+    <div>
+        <div class="col1">
+            <code>tile_validity</code>
+        </div>
+        <div class="col2">
+            The number of days tiles are considered valid (10 years as a
+            default). While valid, tiles are not replaced by the
+            <code>-insert</code>, <code>-import</code> and <code>-export</code>
+            commands. Change this value to 0 or use the <code>-force</code>
+            option to always update tiles.
+        </div>
+        <div class="col1">
+            <code>commit_period</code>
+        </div>
+        <div class="col2">
+            Number of tiles inserted before the database is actually updated
+            (sqlite databases).
+        </div>
+    </div>
+
+    <hr size="1" color="#C0C0C0" />
+    <h4><code>[insert]</code></h4>
+    <div>
+        <div class="col1">
+            <code>request_delay</code>
+        </div>
+        <div class="col2">
+            Minimum delay in seconds between two requests to the tile server (0.1
+            second by default).
+        </div>
+        <div class="col1">
+            <code>timeout</code>
+        </div>
+        <div class="col2">
+            Time after which a request to server without a response is abandoned
+            (3 seconds by default).
+        </div>
+        <div class="col1">
+            <code>number_of_attempts</code>
+        </div>
+        <div class="col2">
+            Total number of attempts to get a tile from server (3 by default).
+        </div>
+        <div class="col1">
+            <code>session_max</code>
+        </div>
+        <div class="col2">
+            Maximum number of tiles inserted during one run of
+            <code>kahelo</code> (1 000 000 by default).
+        </div>
+    </div>
+
+    <hr size="1" color="#C0C0C0" />
+    <h4><code>[import/export]</code></h4>
+    <div>
+        <div class="col1">
+            <code>draw_tile_limits</code>
+        </div>
+        <div class="col2">
+            Enables to draw the contour of the tiles. See
+            <code>border_valid_color</code> and
+            <code>border_expired_color</code> in <code>[tiles]</code> section
+            for colors.
+        </div>
+        <div class="col1">
+            <code>draw_tile_width</code>
+        </div>
+        <div class="col2">
+            Enables to draw the width of the tiles in kilometer. Same color as
+            <code>border_valid_color</code> in <code>[tiles]</code> section.
+        </div>
+    </div>
+
+    <hr size="1" color="#C0C0C0" />
+    <h4><code>[view]</code></h4>
+    <div>
+        <div class="col1">
+            <code>max_dim</code>
+        </div>
+        <div class="col2">
+            Maximum size of the image created by the <code>-view</code> command.
+        </div>
+        <div class="col1">
+            <code>antialias</code>
+        </div>
+        <div class="col2">
+            This parameter applies only when tiles have to be resized according
+            to the value of the <code>max_dim</code> parameter. When true,
+            resizing is slower but achieves better quality.
+        </div>
+        <div class="col1">
+            <code>draw_upper_tiles</code>
+        </div>
+        <div class="col2">
+            This parameter controls the way missing tiles are displayed. If
+            true, the missing tiles are drawn using the tiles at lower zoom
+            levels. Otherwise, the mising tiles are filled with the
+            <code>missing_tile_color</code> defined in next section.
+        </div>
+        <div class="col1">
+            <code>draw_tile_limits</code>
+        </div>
+        <div class="col2">
+            Enables to draw the contour of the tiles. See
+            <code>border_valid_color</code> and
+            <code>border_expired_color</code> in <code>[tiles]</code> section
+            for colors.
+        </div>
+        <div class="col1">
+            <code>draw_tile_width</code>
+        </div>
+        <div class="col2">
+            Enables to draw the width of the tiles in kilometer. Same color as
+            <code>border_valid_color</code> in <code>[tiles]</code> section.
+        </div>
+        <div class="col1">
+            <code>draw_track</code>
+        </div>
+        <div class="col2">
+            Draw the gpx track.
+        </div>
+        <div class="col1">
+            <code>draw_points</code>
+        </div>
+        <div class="col2">
+            Draw the points of the gpx track.
+        </div>
+        <div class="col1">
+            <code>draw_circles</code>
+        </div>
+        <div class="col2">
+            Draw a circle centered at each point of the gpx track with radius
+            given by the <code>-radius</code> parameter (or default value).
+        </div>
+    </div>
+
+    <hr size="1" color="#C0C0C0" />
+    <h4><code>[tiles]</code></h4>
+    <div>
+        <div class="col1">
+            <code>jpeg_quality</code>
+        </div>
+        <div class="col2">
+            JPEG quality factor used when converting tile images to JPEG format.
+            1 is very poor, 100 is lossless. 85 is a good trade-off between
+            quality and compression.
+        </div>
+        <div class="col1">
+            <code>background_color</code>
+        </div>
+        <div class="col2">
+            Specifies the color of the background of the image (part of the
+            image without any tile from the tile set). Given as red, green,
+            blue values in the range 0 to 255.
+        </div>
+        <div class="col1">
+            <code>missing_tile_color</code>
+        </div>
+        <div class="col2">
+            Specifies the color replacing missing tiles. Given as red, green,
+            blue values in the range 0 to 255.
+        </div>
+        <div class="col1">
+            <code>border_valid_color</code>
+        </div>
+        <div class="col2">
+            Specifies the color for drawing the border of valid tiles. Given
+            as red, green, blue, alpha values in the range 0 to 255.
+        </div>
+        <div class="col1">
+            <code>border_expired_color</code>
+        </div>
+        <div class="col2">
+            Specifies the color for drawing the border of expired tiles. Given
+            as red, green, blue, alpha values in the range 0 to 255.
+        </div>
+        <div class="col1">
+            <code>track_color</code>
+        </div>
+        <div class="col2">
+            Specifies the color for drawing the track. Given as red, green, blue
+            values in the range 0 to 255 followed by the width of the line in
+            pixels.
+        </div>
+    </div>
+
+    <hr size="1" color="#C0C0C0" />
+    <h4><code>[server]</code></h4>
+    <div>
+        <div class="col1">
+            <code>port</code>
+        </div>
+        <div class="col2">
+            Specifies the port to access to the tile server started with the
+            <code>-server</code> command.
+        </div>
+    </div>
+
+    <hr />
+
+</body>
+
+</html>
