@@ -69,18 +69,18 @@ GPX2 = """\
 <gpx version="1.0" xmlns="http://www.topografix.com/GPX/1/0">
     <trk>
         <trkseg>
-                <trkpt lat="-27.1401181" lon="-109.4351578"></trkpt>
-                <trkpt lat="-27.1813558" lon="-109.4633102"></trkpt>
-                <trkpt lat="-27.2067017" lon="-109.4258881"></trkpt>
-                <trkpt lat="-27.1740257" lon="-109.3949890"></trkpt>
+            <trkpt lat="-27.1401181" lon="-109.4351578"></trkpt>
+            <trkpt lat="-27.1813558" lon="-109.4633102"></trkpt>
+            <trkpt lat="-27.2067017" lon="-109.4258881"></trkpt>
+            <trkpt lat="-27.1740257" lon="-109.3949890"></trkpt>
         </trkseg>
     </trk>
     <trk>
         <trkseg>
-                <trkpt lat="-27.0863335" lon="-109.2755127"></trkpt>
-                <trkpt lat="-27.0887788" lon="-109.2284775"></trkpt>
-                <trkpt lat="-27.1260632" lon="-109.2350006"></trkpt>
-                <trkpt lat="-27.1275910" lon="-109.2689896"></trkpt>
+            <trkpt lat="-27.0863335" lon="-109.2755127"></trkpt>
+            <trkpt lat="-27.0887788" lon="-109.2284775"></trkpt>
+            <trkpt lat="-27.1260632" lon="-109.2350006"></trkpt>
+            <trkpt lat="-27.1275910" lon="-109.2689896"></trkpt>
         </trkseg>
     </trk>
 </gpx>
@@ -90,6 +90,7 @@ PROJECT="""
 -track test.gpx -zoom 10-11
 -contour test.gpx -zoom 12
 """
+
 
 def define_tile_sets():
     # for reference, number of tiles for test track
@@ -106,6 +107,7 @@ def define_tile_sets():
     with open('test.project', 'wt') as f:
         f.writelines(PROJECT)
 
+
 test_number = 0
 test_result = True
 def check(msg, boolean):
@@ -115,6 +117,7 @@ def check(msg, boolean):
         print 'Error on test #%d: %s' % (test_number, msg)
         test_result = False
         sys.exit(1)
+
 
 def compare_files(name1, name2):
     with open(name1, 'r') as f:
@@ -132,6 +135,7 @@ def compare_files(name1, name2):
                 print i, c, x2[i]
         return r
 
+
 def remove_db(db):
     if os.path.isfile(db):
         os.remove(db)
@@ -142,6 +146,7 @@ def remove_db(db):
     if os.path.isfile(db + '.properties'):
         os.remove(db + '.properties')
 
+
 def clean():
     remove_db('test.db')
     remove_db('test2.db')
@@ -150,6 +155,7 @@ def clean():
     for x in ('test1.png', 'test2.png'):
         if os.path.isfile(x):
             os.remove(x)
+
 
 def test_db(url, db_format, tile_format, db_dest_format, tile_dest_format, trace=''):
     # be sure context is clean
@@ -226,6 +232,7 @@ def test_db(url, db_format, tile_format, db_dest_format, tile_dest_format, trace
 
     clean()
 
+
 def test_contours():
     # test -contour versus -contours
     kahelo('-describe test.db -db kahelo')
@@ -240,6 +247,7 @@ def test_contours():
 
     remove_db('test.db')
 
+
 def test_tile_coords(db_name):
     for zoom in range(1, 11):
         max = 2 ** zoom - 1
@@ -247,6 +255,7 @@ def test_tile_coords(db_name):
         stat2 = kahelo('-count %s -quiet -tiles 0,0,%d,%d  -zoom %d' % (db_name, max, max, zoom))
         print stat1, stat2
         check('-tiles', stat1[1:-1] == stat2[1:-1])
+
 
 def test_zoom_subdivision(url):
     kahelo('-describe test.db -db kahelo -tile_ jpg -url %s' % url)
@@ -266,6 +275,7 @@ def test_zoom_subdivision(url):
     stat = kahelo('-count test.db -zoom 12/12 -track test.gpx')
     check('subdiv7', stat == (11, 11, 0, 0))
     remove_db('test.db')
+
 
 if __name__ == '__main__':
     main()
