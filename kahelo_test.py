@@ -9,7 +9,6 @@ kahelo-test.py <server> <db_name>
 import os
 import sys
 import shutil
-import ConfigParser
 from kahelo import kahelo, db_factory
 
 
@@ -197,11 +196,11 @@ def test_db(url, db_format, tile_format, db_dest_format, tile_dest_format, trace
     db2 = db_factory('test2.db')
     db3 = db_factory('test3.db')
     db4 = db_factory('test4.db')
-    rg = range(0, 21)
-    check('7', db2.count_tiles(rg) == db3.count_tiles(rg))
-    check('8', db2.count_tiles(rg) == db4.count_tiles(rg))
-    check('9', set(db2.list_tiles(rg)) == set(db3.list_tiles(rg)))
-    check('10', set(db2.list_tiles(rg)) == set(db4.list_tiles(rg)))
+    zooms = range(0, 21)
+    check('7', db2.count_tiles(zooms) == db3.count_tiles(zooms))
+    check('8', db2.count_tiles(zooms) == db4.count_tiles(zooms))
+    check('9', set(db2.list_tiles(zooms)) == set(db3.list_tiles(zooms)))
+    check('10', set(db2.list_tiles(zooms)) == set(db4.list_tiles(zooms)))
     db2.close()
     db3.close()
     db4.close()
