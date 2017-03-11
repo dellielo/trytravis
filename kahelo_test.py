@@ -86,7 +86,7 @@ GPX2 = """\
 </gpx>
 """
 
-PROJECT="""
+PROJECT = """
 -track test.gpx -zoom 10-11
 -contour test.gpx -zoom 12
 """
@@ -129,7 +129,7 @@ def compare_files(name1, name2):
         return False
     else:
         r = True
-        for i,c in enumerate(x1):
+        for i, c in enumerate(x1):
             if c != x2[i]:
                 r = False
                 print i, c, x2[i]
@@ -242,8 +242,8 @@ def test_contours():
         stat1.append(kahelo('-count test.db -zoom %d -contour  test2.gpx' % zoom)[0])
         stat2.append(kahelo('-count test.db -zoom %d -contours test2.gpx' % zoom)[0])
 
-    check('-contour' , stat1 == [4, 10, 12, 22, 51, 128, 384])
-    check('-contours', stat2 == [4, 10, 12, 20, 35,  82, 225])
+    check('-contour', stat1 == [4, 10, 12, 22, 51, 128, 384])
+    check('-contours', stat2 == [4, 10, 12, 20, 35, 82, 225])
 
     remove_db('test.db')
 
