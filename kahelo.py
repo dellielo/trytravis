@@ -1536,11 +1536,12 @@ class DatabaseProperties:
         self.dirname = os.path.dirname(self.filename)
         self.section = 'tile_database_properties'
         self.warning = '; This file has been created by %s.\n' % APPNAME
-        self.parser = configparser.ConfigParser()
+        self.parser = configparser.ConfigParser(allow_no_value=True)
         self.parser.add_section(self.section)
 
     def get(self):
         if not os.path.isfile(self.filename):
+            print(self.filename)
             return None, None, None
         else:
             self.parser.read(self.filename)
@@ -1549,8 +1550,11 @@ class DatabaseProperties:
                     self.parser.get(self.section, 'url_template'))
 
     def set(self, db_format, tile_format, url_template):
+        print('set', db_format, tile_format, url_template)
+        print(self.parser)
         self.parser.set(self.section, 'db_name', self.db_name)
         self.parser.set(self.section, 'db_format', db_format)
+        print('for ok', db_format)
         self.parser.set(self.section, 'url_template', url_template)
         self.parser.set(self.section, 'tile_format', tile_format)
         if self.dirname and not os.path.exists(self.dirname):
@@ -1709,9 +1713,9 @@ def do_describe(db_name, options):
     if options.url_template is not None:
         url_template = options.url_template
 
-    print(options.db_format, options.tile_format, options.url_template)
+    print('do_describe.options', options.db_format, options.tile_format, options.url_template)
 
-    print(db_format, tile_format, url_template)
+    print('do_describe', db_format, tile_format, url_template)
     DatabaseProperties(db_name).set(db_format, tile_format, url_template)
 
     print('db_name     ', db_name)
