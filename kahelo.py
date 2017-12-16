@@ -349,7 +349,7 @@ border_valid_color = 255 255 255 128
 ; RGBA    
 border_expired_color = 125 0 0 192      
 ; RGBW (width)
-track_color = 125 0 0 2                 
+track_color = 255 0 0 2                 
 
 
 [server]
@@ -2031,7 +2031,7 @@ def do_makeview(db_name, options):
 
             for x, y in points_tu:
                 X, Y = int((x - x0) * tile_width), int((y - y0) * tile_width)
-                draw.rectangle((X-2, Y-2, X + 2, Y + 2), fill=(125,0,0))
+                draw.rectangle((X-2, Y-2, X + 2, Y + 2), fill=(255,0,0))
 
         # draw track
         if options.view.draw_tracks and not options.db_tiles and not options.coord_tiles:
@@ -2063,13 +2063,15 @@ def do_makeview(db_name, options):
             else:
                 imagename = options.image
                 mosaic.save(imagename)
-        except:
+        except Exception as e:
+            print(e)
             error('error saving image ' + imagename)
 
         display_report(options, ('Tiles in set', n),
                                 ('Displayed', counters.available),
                                 ('Missing', counters.missing))
-    except:
+    except Exception as e:
+        print(e)
         print ('Erroror')
 
 def makeview_tile(tiles, db, mosaic, draw, tile_width, x0, y0, x, y, zoom, options, index, n, counters):
@@ -2370,6 +2372,7 @@ def draw_tracks(options, draw, source, x0, y0, zoom, tile_width):
 
     fill = options.tiles.track_color[0:3]
     width = options.tiles.track_color[3]
+    print(options.tiles.track_color)
     for segment in segments:
         seg = ((int((x - x0) * tile_width), int((y - y0) * tile_width)) for x, y in segment)
         draw.line(sum(seg, ()), fill=fill, width=width)

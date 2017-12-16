@@ -216,10 +216,10 @@ def test_db(url, db_format, tile_format, db_dest_format, tile_dest_format, trace
     db4.close()
 
     # check -view
-    kahelo('-view test2.db -zoom 12 -contour test.gpx -image test1.png -verbose %s' % trace)
-    kahelo('-view test3.db -zoom 12 -records -image test2.png -verbose  %s' % trace)
+    # kahelo('-view test2.db -zoom 12 -contour test.gpx -image test1.png -verbose %s' % trace)
+    # kahelo('-view test3.db -zoom 12 -records -image test2.png -verbose  %s' % trace)
     # check('11', compare_files('test1.png', 'test2.png'))
-    print('TESSSSSSSSSSTTTTTTTTTTTTT      11')
+
     # delete all tiles
     kahelo('-delete test2.db -zoom 10-11 -track test.gpx %s' % trace)
     kahelo('-delete test2.db -zoom 12  -contour test.gpx %s' % trace)
