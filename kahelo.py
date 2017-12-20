@@ -30,8 +30,14 @@ import sys
 import os
 import re
 from math import *
-import requests
-import urllib.request, urllib.error, urllib.parse
+# import requests
+# import urllib.request, urllib.error, urllib.parse
+
+import six
+import six.moves.urllib.request as requests
+import six.moves.urllib.error as urllib_error
+import six.moves.configparser as configparser
+
 from PIL import Image, ImageOps, ImageDraw
 from PIL import ImageFont
 from datetime import datetime
@@ -44,10 +50,10 @@ try:
     import xml.etree.cElementTree as ET
 except:
     import xml.etree.ElementTree as ET
-import configparser
+# import configparser
 import webbrowser
 import itertools
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from six.moves.BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 try:
     import sqlite3
     sqlite3_available = True
@@ -309,47 +315,47 @@ DEFAULTS = \
 """
 [database]
 ; number of days, 0 to ignore
-tile_validity = 3650                    
+tile_validity = 3650
 commit_period = 100
 
 [insert]
-; timeout in seconds   
+; timeout in seconds
 request_delay = 0.05
-; timeout in seconds   
+; timeout in seconds
 timeout = 3
 number_of_attempts = 3
 session_max = 1000000
 
 [import/export]
 ; True or False
-draw_tile_limits = False                
+draw_tile_limits = False
 draw_tile_width = False
 
 [view]
 ; max_dim IN  pixels
-max_dim = 10000    
-; True (slower, better quality) or False                     
-antialias = False                       
-draw_upper_tiles = False                
-draw_tile_limits = True                 
-draw_tile_width = False                 
-draw_tracks = True                     
-draw_points = False                     
-draw_circles = False                    
+max_dim = 10000
+; True (slower, better quality) or False
+antialias = False
+draw_upper_tiles = False
+draw_tile_limits = True
+draw_tile_width = False
+draw_tracks = True
+draw_points = False
+draw_circles = False
 
 [tiles]
 ; 1 (very poor) to 100 (lossless)
-jpeg_quality = 85                       
+jpeg_quality = 85
 ; RGB
-background_color = 32 32 32     
-; RGB        
-missing_tile_color = 128 128 128  
-; RGBA      
+background_color = 32 32 32
+; RGB
+missing_tile_color = 128 128 128
+; RGBA
 border_valid_color = 255 255 255 128
-; RGBA    
-border_expired_color = 125 0 0 192      
+; RGBA
+border_expired_color = 125 0 0 192
 ; RGBW (width)
-track_color = 255 0 0 2                 
+track_color = 255 0 0 2
 
 
 [server]
@@ -382,20 +388,20 @@ class KaheloConfigParser (configparser.ConfigParser):
             return configparser.ConfigParser.getint(self, section, entry)
         except Exception as inst:
             print(type(inst ))    # the exception instance
-            print(inst) 
+            print(inst)
             self.error(section, entry)
 
     def getboolean(self, section, entry):
         try:
             return configparser.ConfigParser.getboolean(self, section, entry)
         except Exception as inst:
-            print(inst) 
+            print(inst)
             self.error(section, entry)
 
     def get(self, section, entry,**kwargs):
         try:
             val = configparser.ConfigParser.get(self, section, entry, **kwargs)
-            return val 
+            return val
         except:
             self.error(section, entry)
 
@@ -501,7 +507,7 @@ def read_config(options):
     except CustomException:
         raise
     except Exception as inst:
-        print(inst) 
+        print(inst)
         error('error reading configuration file')
 
 # -- Error handling ----------------------------------------------------------
@@ -1253,7 +1259,9 @@ class SqliteDatabase(TileDatabase):
     def __init__(self, db_name, tile_format, url_template):
         TileDatabase.__init__(self, db_name, tile_format, url_template)
         self.conn = sqlite3.connect(db_name)
+        self.conn.text_factory = str
         self.cursor = self.conn.cursor()
+
 
     def execute(self, request, args=[]):
         self.cursor.execute(request, args)
@@ -1310,7 +1318,10 @@ class KaheloDatabase(SqliteDatabase):
             self.cursor.execute("DELETE FROM tiles WHERE rowid = ?", (row[0],))
         if date is None:
             date = int(trunc(time()))
-        self.cursor.execute("INSERT INTO tiles VALUES (?,?,?,?,?)", (date, x, y, zoom, tile_buffer)) #buffer(tile_buffer)))
+        if sys.version_info > (3,):
+            buffer = memoryview
+        buf = tile_buffer #buffer(tile_buffer)
+        self.cursor.execute("INSERT INTO tiles VALUES (?,?,?,?,?)", (date, x, y, zoom, buf)) #buffer(tile_buffer)))
 
     def delete(self, x, y, zoom):
         row = self.__retrieve(x, y, zoom)
@@ -1381,7 +1392,10 @@ class RmapsDatabase(SqliteDatabase):
         row = self.__retrieve(x, y, zoom)
         if row is not None:
             self.cursor.execute("DELETE FROM tiles WHERE rowid = ?", (row[0],))
-        self.cursor.execute("INSERT INTO tiles VALUES (?,?,?,?,?)", (x, y, 17 - zoom, 0, (tile))) #buffer
+        if sys.version_info > (3,):
+             buffer = memoryview
+        buf = tile #six.BytesIO(tile)
+        self.cursor.execute("INSERT INTO tiles VALUES (?,?,?,?,?)", (x, y, 17 - zoom, 0, buf)) #buffer
 
     def delete(self, x, y, zoom):
         row = self.__retrieve(x, y, zoom)
@@ -1565,7 +1579,7 @@ class DatabaseProperties:
                 self.parser.write(f)
         except Exception as inst:
             delete(self.filename)
-            print(inst) 
+            print(inst)
             error('unable to write ' + self.filename)
 
 # database factory
@@ -1792,15 +1806,18 @@ def insert_tile(tiles, db, options, x, y, zoom, index, n, counters):
             url = tile_url(options, db, x, y, zoom)
             try:
                 # no proxy handling...
-#                u = urllib.request.urlopen(url, timeout=options.insert.timeout)
-#                tile_buffer = io.BytesIO(u.read())
-#                u.close()
-                resp = requests.get(url)
-                tile_buffer = resp.content
+                u = requests.urlopen(url, timeout=options.insert.timeout)
+                tile_buffer = six.BytesIO(u.read()) #io.BytesIO(u.read())
+                u.close()
+
+               #Python 3 ++
+                # resp = requests.get(url)
+                # tile_buffer = resp.content
+
 #                tile_image = Image.open(resp.raw)
-                
+
                 break
-            except urllib.error.HTTPError as e:
+            except urllib_error.HTTPError as e:
                 if e.code == 404:
                     counters.missing += 1
                     tile_trace(options, x, y, zoom, index, n, '%s : not found' % url)
@@ -1817,7 +1834,7 @@ def insert_tile(tiles, db, options, x, y, zoom, index, n, counters):
             pass
         else:
             try:
-                tile_image = Image.open(io.BytesIO(resp.content))
+                tile_image = Image.open(tile_buffer) #io.BytesIO(tile_buffer)
                 tile_buffer = create_blob_from_image(tile_image,
                                                     db.tile_format(),
                                                     options.tiles.jpeg_quality)
@@ -2240,14 +2257,14 @@ def do_statistics(db_name, options):
 
 def create_image_from_blob(blob):
     # blob is a string containing an entire image file
-    return Image.open(io.BytesIO(blob)) #io.StringIO(blob))
+    return Image.open(six.BytesIO(blob)) #io.StringIO(blob))
 
 def create_blob_from_image(img, format, jpeg_quality=85):
     # img is a PIL image
     # return buffer with requested format
     # stringIO = io.StringIO()
     # save_image(img, stringIO, format, jpeg_quality)
-    stringIO = io.BytesIO()
+    stringIO = six.BytesIO()
     save_image(img, stringIO, format, jpeg_quality)
     return (stringIO.getvalue())
 
