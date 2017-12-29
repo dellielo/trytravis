@@ -29,19 +29,13 @@ def main():
         for db2 in ('kahelo', 'rmaps', 'folder', 'maverick'):
             print('---', db1, db2)
             test_db(url, db1, 'server', db2, 'jpg', trace='')
-    print('TESSSSSSSSSSTTTTTTTTTTTTT     test_db 1')
     test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-quiet')
-    print('TESSSSSSSSSSTTTTTTTTTTTTT     test_db 2')
     test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-verbose')
-    print('TESSSSSSSSSSTTTTTTTTTTTTT     test_db 3')
     test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-verbose')
     # TODO : tester -inside
 
-    print('TESSSSSSSSSSTTTTTTTTTTTTT     test_contours 1')
     test_contours()
-    print('TESSSSSSSSSSTTTTTTTTTTTTT     test_tile_coords 1')
     test_tile_coords(db_name)
-    print('TESSSSSSSSSSTTTTTTTTTTTTT     test_zoom_subdivision 1')
     test_zoom_subdivision(url)
 
     if test_result == True:
@@ -170,7 +164,6 @@ def test_db(url, db_format, tile_format, db_dest_format, tile_dest_format, trace
     kahelo('-describe test2.db -db %s -tile_f %s -url %s %s' % (db_dest_format, tile_dest_format, url, trace))
     kahelo('-describe test3.db -db %s -tile_f %s -url %s %s' % (db_dest_format, tile_dest_format, url, trace))
     kahelo('-describe test4.db -db %s -tile_f %s -url %s %s' % (db_dest_format, tile_dest_format, url, trace))
-    print('DESCRIIIIBEeeeeeeeeeeeeeeeeeee')
 
     # check counting on empty databases
     stat = kahelo('-count test.db -zoom 10-11 -track test.gpx %s' % trace)
@@ -179,15 +172,13 @@ def test_db(url, db_format, tile_format, db_dest_format, tile_dest_format, trace
     check('test_db 2', stat == (12, 0, 0, 12))
     stat = kahelo('-count test.db -project test.project %s' % trace)
     check('test_db 3', stat == (25, 0, 0, 25))
-    print('COUUUUUUUUUUUUUUUUUUUNnttttttt')
 
     # insert some track and contour
-    kahelo('-insert test.db -zoom 10-11 -track test.gpx %s -verbose' % trace)
-    kahelo('-insert test.db -zoom 12 -contour test.gpx %s -verbose' % trace)
-    print('INSEEEEEEEEEEEEEERTTTTTTTTTT')
+    kahelo('-insert test.db -zoom 10-11 -track test.gpx %s' % trace)
+    kahelo('-insert test.db -zoom 12 -contour test.gpx %s' % trace)
 
     # check counting after insertion
-    stat = kahelo('-count test.db -project test.project %s -verbose' % trace)
+    stat = kahelo('-count test.db -project test.project %s' % trace)
     check('test_db 4', stat == (25, 25, 0, 0))
     stat = kahelo('-count test.db -records %s' % trace)
     check('test_db 5', stat == (25, 25, 0, 0))
@@ -197,10 +188,8 @@ def test_db(url, db_format, tile_format, db_dest_format, tile_dest_format, trace
     # export using various tile sets
     kahelo('-import test2.db -track test.gpx   -zoom 10-11 -source test.db %s' % trace)
     kahelo('-import test2.db -contour test.gpx -zoom 12    -source test.db %s' % trace)
-    print('IMPOOOOOOOOOOOOORTTTTTTTTT')
     kahelo('-export test.db  -project test.project         -dest test3.db %s' % trace)
     kahelo('-export test.db  -records                      -dest test4.db %s' % trace)
-    print('EXPOOOOOOOOOOOOOOOOOOOORRRRRRTTTT')
 
     # check counts by using count_tiles and list_tiles methods
     db2 = db_factory('test2.db')
@@ -216,8 +205,9 @@ def test_db(url, db_format, tile_format, db_dest_format, tile_dest_format, trace
     db4.close()
 
     # check -view
-    # kahelo('-view test2.db -zoom 12 -contour test.gpx -image test1.png -verbose %s' % trace)
-    # kahelo('-view test3.db -zoom 12 -records -image test2.png -verbose  %s' % trace)
+    # ED: no work because the size of the images are not the same
+    # kahelo('-view test2.db -zoom 12 -contour test.gpx -image test1.png %s' % trace)
+    # kahelo('-view test3.db -zoom 12 -records -image test2.png %s' % trace)
     # check('11', compare_files('test1.png', 'test2.png'))
 
     # delete all tiles
@@ -225,7 +215,7 @@ def test_db(url, db_format, tile_format, db_dest_format, tile_dest_format, trace
     kahelo('-delete test2.db -zoom 12  -contour test.gpx %s' % trace)
     kahelo('-delete test3.db -project test.project %s' % trace)
     kahelo('-delete test4.db -records %s' % trace)
-    print('TESSSSSSSSSSTTTTTTTTTTTTT      12')
+
     # check counts by using count_tiles and list_tiles methods
     db2 = db_factory('test2.db')
     db3 = db_factory('test3.db')
@@ -235,7 +225,6 @@ def test_db(url, db_format, tile_format, db_dest_format, tile_dest_format, trace
     check('13', db2.count_tiles(rg) == db4.count_tiles(rg))
     check('14', set(db2.list_tiles(rg)) == set(db3.list_tiles(rg)))
     check('15', set(db2.list_tiles(rg)) == set(db4.list_tiles(rg)))
-    print('TESSSSSSSSSSTTTTTTTTTTTTT      13')
     db2.close()
     db3.close()
     db4.close()

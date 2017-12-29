@@ -30,8 +30,6 @@ import sys
 import os
 import re
 from math import *
-# import requests
-# import urllib.request, urllib.error, urllib.parse
 
 import six
 import six.moves.urllib.request as requests
@@ -314,48 +312,36 @@ def default_radius(x, y, zoom):
 DEFAULTS = \
 """
 [database]
-; number of days, 0 to ignore
-tile_validity = 3650
+tile_validity = 3650                    ; number of days, 0 to ignore
 commit_period = 100
 
 [insert]
-; timeout in seconds
-request_delay = 0.05
-; timeout in seconds
-timeout = 3
+request_delay = 0.05                    ; seconds
+timeout = 3                             ; seconds
 number_of_attempts = 3
 session_max = 1000000
 
 [import/export]
-; True or False
-draw_tile_limits = False
-draw_tile_width = False
+draw_tile_limits = False                ; True or False
+draw_tile_width = False                 ; True or False
 
 [view]
-; max_dim IN  pixels
-max_dim = 10000
-; True (slower, better quality) or False
-antialias = False
-draw_upper_tiles = False
-draw_tile_limits = True
-draw_tile_width = False
-draw_tracks = True
-draw_points = False
-draw_circles = False
+max_dim = 10000                         ; pixels
+antialias = False                       ; True (slower, better quality) or False
+draw_upper_tiles = False                ; True or False
+draw_tile_limits = True                 ; True or False
+draw_tile_width = False                 ; True or False
+draw_tracks = True                      ; True or False
+draw_points = False                     ; True or False
+draw_circles = False                    ; True or False
 
 [tiles]
-; 1 (very poor) to 100 (lossless)
-jpeg_quality = 85
-; RGB
-background_color = 32 32 32
-; RGB
-missing_tile_color = 128 128 128
-; RGBA
-border_valid_color = 255 255 255 128
-; RGBA
-border_expired_color = 125 0 0 192
-; RGBW (width)
-track_color = 255 0 0 2
+jpeg_quality = 85                       ; 1 (very poor) to 100 (lossless)
+background_color = 32 32 32             ; RGB
+missing_tile_color = 128 128 128        ; RGB
+border_valid_color = 255 255 255 128    ; RGBA
+border_expired_color = 255 0 0 192      ; RGBA
+track_color = 255 0 0 2                 ; RGBW (width)
 
 
 [server]
@@ -378,7 +364,10 @@ ghost_tile_color = 64 64 64
 class KaheloConfigParser (configparser.ConfigParser):
     """Add input checking."""
     def __init__(self):
-        configparser.ConfigParser.__init__(self)
+        if sys.version_info < (3,):
+            configparser.ConfigParser.__init__(self)
+        else:
+            configparser.ConfigParser.__init__(self, inline_comment_prefixes=(';',))
 
     def error(self, section, entry):
         error('missing or incorrect config value: [%s]%s' % (section, entry))
@@ -506,9 +495,8 @@ def read_config(options):
         getconfig(options, config_filename, advanced_config_filename)
     except CustomException:
         raise
-    except Exception as inst:
-        print(inst)
-        error('error reading configuration file')
+    except Exception as e:
+        error('error reading configuration file :' + e)
 
 # -- Error handling ----------------------------------------------------------
 
@@ -1392,10 +1380,7 @@ class RmapsDatabase(SqliteDatabase):
         row = self.__retrieve(x, y, zoom)
         if row is not None:
             self.cursor.execute("DELETE FROM tiles WHERE rowid = ?", (row[0],))
-        if sys.version_info > (3,):
-             buffer = memoryview
-        buf = tile #six.BytesIO(tile)
-        self.cursor.execute("INSERT INTO tiles VALUES (?,?,?,?,?)", (x, y, 17 - zoom, 0, buf)) #buffer
+        self.cursor.execute("INSERT INTO tiles VALUES (?,?,?,?,?)", (x, y, 17 - zoom, 0, tile))
 
     def delete(self, x, y, zoom):
         row = self.__retrieve(x, y, zoom)
@@ -1555,7 +1540,6 @@ class DatabaseProperties:
 
     def get(self):
         if not os.path.isfile(self.filename):
-            print(self.filename)
             return None, None, None
         else:
             self.parser.read(self.filename)
@@ -1564,11 +1548,8 @@ class DatabaseProperties:
                     self.parser.get(self.section, 'url_template'))
 
     def set(self, db_format, tile_format, url_template):
-        print('set', db_format, tile_format, url_template)
-        print(self.parser)
         self.parser.set(self.section, 'db_name', self.db_name)
         self.parser.set(self.section, 'db_format', db_format)
-        print('for ok', db_format)
         self.parser.set(self.section, 'url_template', url_template)
         self.parser.set(self.section, 'tile_format', tile_format)
         if self.dirname and not os.path.exists(self.dirname):
@@ -1577,10 +1558,9 @@ class DatabaseProperties:
             with open(self.filename, 'w') as f:
                 f.write(self.warning)
                 self.parser.write(f)
-        except Exception as inst:
+        except Exception as e:
             delete(self.filename)
-            print(inst)
-            error('unable to write ' + self.filename)
+            error('unable to write ' + self.filename + ' : ' + e)
 
 # database factory
 
@@ -1727,9 +1707,6 @@ def do_describe(db_name, options):
     if options.url_template is not None:
         url_template = options.url_template
 
-    print('do_describe.options', options.db_format, options.tile_format, options.url_template)
-
-    print('do_describe', db_format, tile_format, url_template)
     DatabaseProperties(db_name).set(db_format, tile_format, url_template)
 
     print('db_name     ', db_name)
@@ -1810,12 +1787,6 @@ def insert_tile(tiles, db, options, x, y, zoom, index, n, counters):
                 tile_buffer = six.BytesIO(u.read()) #io.BytesIO(u.read())
                 u.close()
 
-               #Python 3 ++
-                # resp = requests.get(url)
-                # tile_buffer = resp.content
-
-#                tile_image = Image.open(resp.raw)
-
                 break
             except urllib_error.HTTPError as e:
                 if e.code == 404:
@@ -1824,8 +1795,8 @@ def insert_tile(tiles, db, options, x, y, zoom, index, n, counters):
                     return
                 else:
                     tile_trace(options, x, y, zoom, index, n, '%s : connection error %d - %d' % (url, i+1, e.code))
-            except Exception as inst:
-                tile_trace(options, x, y, zoom, index, n, '%s : Exception connection error %d - %s' % (url, i+1, inst))
+            except Exception as e:
+                tile_trace(options, x, y, zoom, index, n, '%s : Exception connection error %d - %s' % (url, i+1, e))
         else:
             counters.missing += 1
             return
@@ -1843,9 +1814,8 @@ def insert_tile(tiles, db, options, x, y, zoom, index, n, counters):
 #                tile_buffer = create_blob_from_image(tile_image,
 #                                                     db.tile_format(),
 #                                                     options.tiles.jpeg_quality)
-            except Exception as inst:
-                print (inst)
-                tile_trace(options, x, y, zoom, index, n, 'image conversion error open')
+            except Exception as e:
+                tile_trace(options, x, y, zoom, index, n, 'image conversion error open ' + e)
                 counters.missing += 1
                 return
 
@@ -1905,7 +1875,7 @@ def import_tiles(options, db_src, db_dst, tiles):
 def import_tile(tiles, db_dst, x, y, zoom, options, index, n, counters, db_src):
     exists_dst, date_dst = db_dst.exists(x, y, zoom)
     exists_src, date_src = db_src.exists(x, y, zoom)
-    print (db_dst, db_src, exists_dst, exists_src)
+
     if not exists_src:
         counters.missing += 1
         tile_trace(options,x, y, zoom, index, n, 'missing in source')
@@ -1918,7 +1888,6 @@ def import_tile(tiles, db_dst, x, y, zoom, options, index, n, counters, db_src):
 
     # retrieve from source, tile is a PIL image
     exists_src, date_src, tile = db_src.retrieve(x, y, zoom)
-    print (db_src, date_src, exists_src, tile)
 
     if exists_src is None:
         counters.missing += 1
@@ -2046,7 +2015,6 @@ def do_makeview(db_name, options):
             makeview_tile(tiles, db, mosaic, draw, tile_width, x0, y0, x, y, zoom, options, index, n, counters)
 
         # draw points at track coordinates
-        print(options.view.draw_points, options.db_tiles, options.coord_tiles)
         if options.view.draw_points and not options.db_tiles and not options.coord_tiles:
             points_tu = track_points(source, zoom, options)
 
@@ -2393,7 +2361,6 @@ def draw_tracks(options, draw, source, x0, y0, zoom, tile_width):
 
     fill = options.tiles.track_color[0:3]
     width = options.tiles.track_color[3]
-    print(options.tiles.track_color)
     for segment in segments:
         seg = ((int((x - x0) * tile_width), int((y - y0) * tile_width)) for x, y in segment)
         draw.line(sum(seg, ()), fill=fill, width=width)
