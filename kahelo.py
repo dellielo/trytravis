@@ -30,23 +30,28 @@ import sys
 import os
 import re
 from math import *
-import urllib2
+
+import six
+import six.moves.urllib.request as requests
+import six.moves.urllib.error as urllib_error
+import six.moves.configparser as configparser
+
 from PIL import Image, ImageOps, ImageDraw
 from PIL import ImageFont
 from datetime import datetime
 from time import time, sleep, strftime, gmtime
 import argparse
 from random import randint
-import StringIO
+import io
 import tempfile
 try:
     import xml.etree.cElementTree as ET
 except:
     import xml.etree.ElementTree as ET
-import ConfigParser
+# import configparser
 import webbrowser
 import itertools
-from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+from six.moves.BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 try:
     import sqlite3
     sqlite3_available = True
@@ -217,9 +222,9 @@ def complete_source(options):
     # replace zoom string with list of zoom values
     if options.zoom is None:
         if options.project:
-            options.zoom = range(MAXZOOM + 1)
+            options.zoom = list(range(MAXZOOM + 1))
         elif options.db_tiles:
-            options.zoom = range(MAXZOOM + 1)
+            options.zoom = list(range(MAXZOOM + 1))
         else:
             error('zoom must be given')
     else:
@@ -275,7 +280,7 @@ def decode_range(s):
         if m:
             i1 = int(m.group(1))
             i2 = int(m.group(2))
-            R.extend(range(i1, i2 + 1))
+            R.extend(list(range(i1, i2 + 1)))
         elif x.isdigit():
             R.append(int(x))
         else:
@@ -338,6 +343,7 @@ border_valid_color = 255 255 255 128    ; RGBA
 border_expired_color = 255 0 0 192      ; RGBA
 track_color = 255 0 0 2                 ; RGBW (width)
 
+
 [server]
 port = 80
 """
@@ -355,29 +361,42 @@ interpolated_points = False
 ghost_tile_color = 64 64 64
 """
 
-class KaheloConfigParser (ConfigParser.ConfigParser):
+class KaheloConfigParser (configparser.ConfigParser):
     """Add input checking."""
     def __init__(self):
-        ConfigParser.ConfigParser.__init__(self)
+        if sys.version_info < (3,):
+            configparser.ConfigParser.__init__(self)
+        else:
+            configparser.ConfigParser.__init__(self, inline_comment_prefixes=(';',))
 
     def error(self, section, entry):
         error('missing or incorrect config value: [%s]%s' % (section, entry))
 
     def getint(self, section, entry):
         try:
-            return ConfigParser.ConfigParser.getint(self, section, entry)
-        except:
+            return configparser.ConfigParser.getint(self, section, entry)
+        except Exception as inst:
+            print(type(inst ))    # the exception instance
+            print(inst)
             self.error(section, entry)
 
     def getboolean(self, section, entry):
         try:
-            return ConfigParser.ConfigParser.getboolean(self, section, entry)
+            return configparser.ConfigParser.getboolean(self, section, entry)
+        except Exception as inst:
+            print(inst)
+            self.error(section, entry)
+
+    def get(self, section, entry,**kwargs):
+        try:
+            val = configparser.ConfigParser.get(self, section, entry, **kwargs)
+            return val
         except:
             self.error(section, entry)
 
     def getcolor(self, section, entry, n):
         try:
-            s = ConfigParser.ConfigParser.get(self, section, entry)
+            s = configparser.ConfigParser.get(self, section, entry)
             x = tuple([int(x) for x in s.split()])
             if len(x) == n:
                 return x
@@ -476,8 +495,8 @@ def read_config(options):
         getconfig(options, config_filename, advanced_config_filename)
     except CustomException:
         raise
-    except:
-        error('error reading configuration file')
+    except Exception as e:
+        error('error reading configuration file :' + e)
 
 # -- Error handling ----------------------------------------------------------
 
@@ -485,8 +504,8 @@ class CustomException(Exception):
     pass
 
 def error(msg):
-    print APPNAME, 'error:', msg
-    print '-help or -h for more information'
+    print(APPNAME, 'error:', msg)
+    print('-help or -h for more information')
     raise CustomException()
 
 # -- Command dispatcher ------------------------------------------------------
@@ -1015,7 +1034,7 @@ def tile_list_generator(options, db_source, db_filter):
     return tile_set
 
 def tile_list_generate_level(options, generator, source, zoom, radius, db_source, db_filter):
-    print source, zoom
+    print(source, zoom)
     source = find_file(source, options)
 
     if zoom <= options.zoom_limit:
@@ -1040,7 +1059,7 @@ def tile_list_generate_level(options, generator, source, zoom, radius, db_source
 
 def tile_project_generator(options, project, zoom, radius, db_source, db_filter):
     if zoom is None:
-        all_zooms = range(MAXZOOM + 1)
+        all_zooms = list(range(MAXZOOM + 1))
     else:
         all_zooms = zoom
 
@@ -1228,7 +1247,9 @@ class SqliteDatabase(TileDatabase):
     def __init__(self, db_name, tile_format, url_template):
         TileDatabase.__init__(self, db_name, tile_format, url_template)
         self.conn = sqlite3.connect(db_name)
+        self.conn.text_factory = str
         self.cursor = self.conn.cursor()
+
 
     def execute(self, request, args=[]):
         self.cursor.execute(request, args)
@@ -1285,7 +1306,10 @@ class KaheloDatabase(SqliteDatabase):
             self.cursor.execute("DELETE FROM tiles WHERE rowid = ?", (row[0],))
         if date is None:
             date = int(trunc(time()))
-        self.cursor.execute("INSERT INTO tiles VALUES (?,?,?,?,?)", (date, x, y, zoom, buffer(tile_buffer)))
+        if sys.version_info > (3,):
+            buffer = memoryview
+        buf = tile_buffer #buffer(tile_buffer)
+        self.cursor.execute("INSERT INTO tiles VALUES (?,?,?,?,?)", (date, x, y, zoom, buf)) #buffer(tile_buffer)))
 
     def delete(self, x, y, zoom):
         row = self.__retrieve(x, y, zoom)
@@ -1356,7 +1380,7 @@ class RmapsDatabase(SqliteDatabase):
         row = self.__retrieve(x, y, zoom)
         if row is not None:
             self.cursor.execute("DELETE FROM tiles WHERE rowid = ?", (row[0],))
-        self.cursor.execute("INSERT INTO tiles VALUES (?,?,?,?,?)", (x, y, 17 - zoom, 0, buffer(tile)))
+        self.cursor.execute("INSERT INTO tiles VALUES (?,?,?,?,?)", (x, y, 17 - zoom, 0, tile))
 
     def delete(self, x, y, zoom):
         row = self.__retrieve(x, y, zoom)
@@ -1511,7 +1535,7 @@ class DatabaseProperties:
         self.dirname = os.path.dirname(self.filename)
         self.section = 'tile_database_properties'
         self.warning = '; This file has been created by %s.\n' % APPNAME
-        self.parser = ConfigParser.ConfigParser()
+        self.parser = configparser.ConfigParser(allow_no_value=True)
         self.parser.add_section(self.section)
 
     def get(self):
@@ -1531,11 +1555,12 @@ class DatabaseProperties:
         if self.dirname and not os.path.exists(self.dirname):
             os.makedirs(self.dirname)
         try:
-            with open(self.filename, 'wb') as f:
+            with open(self.filename, 'w') as f:
                 f.write(self.warning)
                 self.parser.write(f)
-        except:
-            error('unable to write ' + self.filename)
+        except Exception as e:
+            delete(self.filename)
+            error('unable to write ' + self.filename + ' : ' + e)
 
 # database factory
 
@@ -1579,13 +1604,13 @@ def tile_trace(options, x, y, zoom, index, size, msg):
         pc2 = 100.0 * num / size
         pc3 = floor(pc2)
         if pc1 < pc3:
-            print 'Tiles %.0f%% (%d/%d)' % (pc3, num, size)
+            print('Tiles %.0f%% (%d/%d)' % (pc3, num, size))
 
 def tile_message(x, y, zoom, index, size, msg):
-    print 'Tile (%d,%d,%d) %d/%d: %s' % (x, y, zoom, index+1, size, msg)
+    print('Tile (%d,%d,%d) %d/%d: %s' % (x, y, zoom, index+1, size, msg))
 
 def display_report(options, *entries):
-    print '-' * 29
+    print('-' * 29)
     entries = list(entries)
     entries.append(('Elapsed time', strftime("%H:%M:%S", gmtime(time() - options.start_time))))
     for caption, value in entries:
@@ -1593,7 +1618,7 @@ def display_report(options, *entries):
             v = '{:,}'.format(value)
         except:
             v = value
-        print '%-16s %12s' % (caption, v)
+        print('%-16s %12s' % (caption, v))
 
 def decsep(n):
     return '{:,}'.format(n)
@@ -1603,7 +1628,7 @@ def decsep(n):
 # used by -insert and -import/-export
 
 # import actions
-NOP, INSERT, LATEST = range(3)
+NOP, INSERT, LATEST = list(range(3))
 
 # force mode: insert if something available
 FORCE_MODE = (
@@ -1645,16 +1670,16 @@ def should_insert(options, exists_src, date_src, exists_dst, date_dst):
 # -version : version number --------------------------------------------------
 
 def print_version():
-    print IDENTITY
-    print APPNAME, VERSION
+    print(IDENTITY)
+    print(APPNAME, VERSION)
 
 # -license : display text of license -----------------------------------------
 
 def print_license():
-    print IDENTITY
-    print APPNAME, VERSION
-    print
-    print LICENSE
+    print(IDENTITY)
+    print(APPNAME, VERSION)
+    print()
+    print(LICENSE)
 
 # -help : print help ---------------------------------------------------------
 
@@ -1684,10 +1709,10 @@ def do_describe(db_name, options):
 
     DatabaseProperties(db_name).set(db_format, tile_format, url_template)
 
-    print 'db_name     ', db_name
-    print 'db_format   ', db_format
-    print 'tile_format ', tile_format
-    print 'url_template', url_template
+    print('db_name     ', db_name)
+    print('db_format   ', db_format)
+    print('tile_format ', tile_format)
+    print('url_template', url_template)
 
 # -count : number of tiles for source and zoom -------------------------------
 
@@ -1735,7 +1760,7 @@ def do_insert(db_name, options):
         insert_tile(tiles, db, options, x, y, zoom, index, n, counters)
     db.commit()
     if options.verbose:
-        print 'Commit.'
+        print('Commit.')
 
     display_report(options, ('Tiles in set', n),
                             ('Already present', counters.ignored),
@@ -1758,19 +1783,20 @@ def insert_tile(tiles, db, options, x, y, zoom, index, n, counters):
             url = tile_url(options, db, x, y, zoom)
             try:
                 # no proxy handling...
-                u = urllib2.urlopen(url, timeout=options.insert.timeout)
-                tile_buffer = u.read()
+                u = requests.urlopen(url, timeout=options.insert.timeout)
+                tile_buffer = six.BytesIO(u.read()) #io.BytesIO(u.read())
                 u.close()
+
                 break
-            except urllib2.HTTPError as e:
+            except urllib_error.HTTPError as e:
                 if e.code == 404:
                     counters.missing += 1
                     tile_trace(options, x, y, zoom, index, n, '%s : not found' % url)
                     return
                 else:
-                    tile_trace(options, x, y, zoom, index, n, '%s : connection error %d' % (url, i+1))
-            except:
-                tile_trace(options, x, y, zoom, index, n, '%s : connection error %d' % (url, i+1))
+                    tile_trace(options, x, y, zoom, index, n, '%s : connection error %d - %d' % (url, i+1, e.code))
+            except Exception as e:
+                tile_trace(options, x, y, zoom, index, n, '%s : Exception connection error %d - %s' % (url, i+1, e))
         else:
             counters.missing += 1
             return
@@ -1779,16 +1805,21 @@ def insert_tile(tiles, db, options, x, y, zoom, index, n, counters):
             pass
         else:
             try:
-                tile_image = create_image_from_blob(tile_buffer)
+                tile_image = Image.open(tile_buffer) #io.BytesIO(tile_buffer)
                 tile_buffer = create_blob_from_image(tile_image,
-                                                     db.tile_format(),
-                                                     options.tiles.jpeg_quality)
-            except:
-                tile_trace(options, x, y, zoom, index, n, 'image conversion error')
+                                                    db.tile_format(),
+                                                    options.tiles.jpeg_quality)
+#                tile_image = Image.open(resp.raw)
+#                tile_image = create_image_from_blob(tile_buffer)
+#                tile_buffer = create_blob_from_image(tile_image,
+#                                                     db.tile_format(),
+#                                                     options.tiles.jpeg_quality)
+            except Exception as e:
+                tile_trace(options, x, y, zoom, index, n, 'image conversion error open ' + e)
                 counters.missing += 1
                 return
 
-        db.update(int(floor(time())), x, y, zoom, buffer(tile_buffer))
+        db.update(int(floor(time())), x, y, zoom, tile_buffer) #buffer(tile_buffer))
 
         counters.inserted += 1
         msg = 'updated' if exists_dst else 'inserted'
@@ -1796,7 +1827,7 @@ def insert_tile(tiles, db, options, x, y, zoom, index, n, counters):
         if counters.inserted % options.database.commit_period == 0:
             db.commit()
             if options.verbose:
-                print 'Commit.'
+                print('Commit.')
 
 def tile_url(options, db, x, y, zoom):
     template = db.url_template()
@@ -1864,7 +1895,7 @@ def import_tile(tiles, db_dst, x, y, zoom, options, index, n, counters, db_src):
         return
 
     # prepare drawing
-    if date_src > options.database.expiry_date:
+    if date_src is not None and date_src > options.database.expiry_date:
         color = options.tiles.border_valid_color
     else:
         color = options.tiles.border_expired_color
@@ -1947,85 +1978,90 @@ def delete_tile(tiles, db, x, y, zoom, options, index, size, counters):
 # -view : make image from gpx ------------------------------------------------
 
 def do_makeview(db_name, options):
-    db = db_factory(db_name)
+    try :
+        db = db_factory(db_name)
+        generator, source, zoom, radius = options_generate(options)
+        if len(zoom) > 1:
+            error('view does not apply to multiple zoom levels')
+        else:
+            zoom = zoom[0]
 
-    generator, source, zoom, radius = options_generate(options)
-    if len(zoom) > 1:
-        error('view does not apply to multiple zoom levels')
-    else:
-        zoom = zoom[0]
+        tiles = tileset(options, db, db_filter=options.inside)
+        n = tiles.size()
+        counters = TileCounters()
 
-    tiles = tileset(options, db, db_filter=options.inside)
-    n = tiles.size()
-    counters = TileCounters()
+        if n == 0:
+            error('no tiles to display')
 
-    if n == 0:
-        error('no tiles to display')
+        x0, y0, x1, y1 = tiles.binding_box()
+        nx = x1 - x0 + 1
+        ny = y1 - y0 + 1
 
-    x0, y0, x1, y1 = tiles.binding_box()
-    nx = x1 - x0 + 1
-    ny = y1 - y0 + 1
+        max_dim = max(nx, ny) * 256
+        if max_dim <= options.view.max_dim:
+            tile_width = 256
+        else:
+            tile_width = int(256.0 * options.view.max_dim / max_dim)
 
-    max_dim = max(nx, ny) * 256
-    if max_dim <= options.view.max_dim:
-        tile_width = 256
-    else:
-        tile_width = int(256.0 * options.view.max_dim / max_dim)
+        if tile_width == 0:
+            error('too many tiles for image size')
 
-    if tile_width == 0:
-        error('too many tiles for image size')
+        # create image
+        mosaic = Image.new('RGBA', (nx * tile_width, ny * tile_width), options.tiles.background_color)
+        draw = ImageDraw.Draw(mosaic)
 
-    # create image
-    mosaic = Image.new('RGBA', (nx * tile_width, ny * tile_width), options.tiles.background_color)
-    draw = ImageDraw.Draw(mosaic)
+        # draw tiles
+        for index, (x, y, z) in enumerate(tiles):
+            makeview_tile(tiles, db, mosaic, draw, tile_width, x0, y0, x, y, zoom, options, index, n, counters)
 
-    # draw tiles
-    for index, (x, y, z) in enumerate(tiles):
-        makeview_tile(tiles, db, mosaic, draw, tile_width, x0, y0, x, y, zoom, options, index, n, counters)
+        # draw points at track coordinates
+        if options.view.draw_points and not options.db_tiles and not options.coord_tiles:
+            points_tu = track_points(source, zoom, options)
 
-    # draw points at track coordinates
-    if options.view.draw_points and not options.db_tiles and not options.coord_tiles:
-        points_tu = track_points(source, zoom, options)
-
-        for x, y in points_tu:
-            X, Y = int((x - x0) * tile_width), int((y - y0) * tile_width)
-            draw.rectangle((X-2, Y-2, X + 2, Y + 2), fill=(255,0,0))
-
-    # draw track
-    if options.view.draw_tracks and not options.db_tiles and not options.coord_tiles:
-        draw_tracks(options, draw, source, x0, y0, zoom, tile_width)
-
-    # draw circles
-    if options.view.draw_circles and not options.db_tiles and not options.coord_tiles:
-        points_tu = track_points(source, zoom, options)
-
-        radius_km = options.radius
-        if radius_km is None:
-            x, y = points_tu[0]
-            radius_km = default_radius(x, y, zoom)
-
-        if radius_km > 0:
-            radius_tu = tile_hdistance_tu(x, y, zoom, radius_km)
             for x, y in points_tu:
                 X, Y = int((x - x0) * tile_width), int((y - y0) * tile_width)
-                d = radius_tu * tile_width
-                draw.ellipse((X-d, Y-d, X + d, Y + d))
+                draw.rectangle((X-2, Y-2, X + 2, Y + 2), fill=(255,0,0))
 
-    # save image and display if required
-    try:
-        if options.image is None:
-            imagename = APPNAME + '-view-image.jpg'
-            mosaic.save(imagename)
-            webbrowser.open(imagename, new=2)
-        else:
-            imagename = options.image
-            mosaic.save(imagename)
-    except:
-        error('error saving image ' + imagename)
+        # draw track
+        if options.view.draw_tracks and not options.db_tiles and not options.coord_tiles:
+            draw_tracks(options, draw, source, x0, y0, zoom, tile_width)
 
-    display_report(options, ('Tiles in set', n),
-                            ('Displayed', counters.available),
-                            ('Missing', counters.missing))
+        # draw circles
+        if options.view.draw_circles and not options.db_tiles and not options.coord_tiles:
+            points_tu = track_points(source, zoom, options)
+
+            radius_km = options.radius
+            if radius_km is None:
+                x, y = points_tu[0]
+                radius_km = default_radius(x, y, zoom)
+
+            if radius_km > 0:
+                radius_tu = tile_hdistance_tu(x, y, zoom, radius_km)
+                for x, y in points_tu:
+                    X, Y = int((x - x0) * tile_width), int((y - y0) * tile_width)
+                    d = radius_tu * tile_width
+                    draw.ellipse((X-d, Y-d, X + d, Y + d))
+
+        # save image and display if required
+        try:
+            print (mosaic, options.image)
+            if options.image is None:
+                imagename = APPNAME + '-view-image.jpg'
+                ret = mosaic.save(imagename)
+                webbrowser.open(imagename, new=2)
+            else:
+                imagename = options.image
+                mosaic.save(imagename)
+        except Exception as e:
+            print(e)
+            error('error saving image ' + imagename)
+
+        display_report(options, ('Tiles in set', n),
+                                ('Displayed', counters.available),
+                                ('Missing', counters.missing))
+    except Exception as e:
+        print(e)
+        print ('Erroror')
 
 def makeview_tile(tiles, db, mosaic, draw, tile_width, x0, y0, x, y, zoom, options, index, n, counters):
     exists, date, tile = db.retrieve(x, y, zoom)
@@ -2108,7 +2144,7 @@ class TileServerHTTPRequestHandler(BaseHTTPRequestHandler):
             zoom, x, y = m.group(1,2,3)
             zoom, x, y = int(zoom), int(x), int(y)
             exists, date, img = db.retrieve(x, y, zoom)
-            print x, y, zoom, exists
+            print(x, y, zoom, exists)
 
             if not exists:
                 raise IOError
@@ -2152,8 +2188,8 @@ def do_statistics(db_name, options):
             pass
 
     display_report(options)
-    print '-' * 29
-    print '%4s %6s %6s %6s %8s %12s (sizes in byte)' % ('zoom', 'count', 'min', 'max', 'average', 'total')
+    print('-' * 29)
+    print('%4s %6s %6s %6s %8s %12s (sizes in byte)' % ('zoom', 'count', 'min', 'max', 'average', 'total'))
 
     for zoom in [z for z,v in enumerate(size) if len(v) > 0]:
         slen  = decsep(len(size[zoom]))
@@ -2161,7 +2197,7 @@ def do_statistics(db_name, options):
         smax  = decsep(max(size[zoom]))
         smean = decsep(sum(size[zoom]) / len(size[zoom]))
         stot  = decsep(sum(size[zoom]))
-        print '%4d %6s %6s %6s %8s %12s' % (zoom, slen, smin, smax, smean, stot)
+        print('%4d %6s %6s %6s %8s %12s' % (zoom, slen, smin, smax, smean, stot))
 
     if len(sizes) == 0:
         slen, smin, smax, smean, stot = [0] * 5
@@ -2171,32 +2207,34 @@ def do_statistics(db_name, options):
         smax  = decsep(max(sizes))
         smean = decsep(sum(sizes) / len(sizes))
         stot  = decsep(sum(sizes))
-    print '%4s %6s %6s %6s %8s %12s' % ('all', slen, smin, smax, smean, stot)
-    print '-' * 29
+    print('%4s %6s %6s %6s %8s %12s' % ('all', slen, smin, smax, smean, stot))
+    print('-' * 29)
 
-    print '%4s %6s %6s %6s %6s (boxing area in tile units)' % ('zoom', 'x min', 'y min', 'x max', 'y max')
+    print('%4s %6s %6s %6s %6s (boxing area in tile units)' % ('zoom', 'x min', 'y min', 'x max', 'y max'))
     for zoom in [z for z,v in enumerate(xmin) if v < 2 ** maxzoomp1]:
-        print '%4d %6d %6d %6d %6d' % (zoom, xmin[zoom], ymin[zoom], xmax[zoom], ymax[zoom])
+        print('%4d %6d %6d %6d %6d' % (zoom, xmin[zoom], ymin[zoom], xmax[zoom], ymax[zoom]))
 
-    print '-' * 29
-    print '%4s %11s %11s %11s %11s (boxing area in degrees)' % ('zoom', 'lat min', 'long min', 'lat max', 'long max')
+    print('-' * 29)
+    print('%4s %11s %11s %11s %11s (boxing area in degrees)' % ('zoom', 'lat min', 'long min', 'lat max', 'long max'))
     for zoom in [z for z,v in enumerate(xmin) if v < 2 ** maxzoomp1]:
         lat_min, lon_min = tile2deg(xmin[zoom], ymin[zoom], zoom)
         lat_max, lon_max = tile2deg(xmax[zoom], ymax[zoom], zoom)
-        print '%4d %11.6f %11.6f %11.6f %11.6f' % (zoom, lat_min, lon_min, lat_max, lon_max)
+        print('%4d %11.6f %11.6f %11.6f %11.6f' % (zoom, lat_min, lon_min, lat_max, lon_max))
 
 # -- Image and drawing helpers -----------------------------------------------
 
 def create_image_from_blob(blob):
     # blob is a string containing an entire image file
-    return Image.open(StringIO.StringIO(blob))
+    return Image.open(six.BytesIO(blob)) #io.StringIO(blob))
 
 def create_blob_from_image(img, format, jpeg_quality=85):
     # img is a PIL image
     # return buffer with requested format
-    stringIO = StringIO.StringIO()
+    # stringIO = io.StringIO()
+    # save_image(img, stringIO, format, jpeg_quality)
+    stringIO = six.BytesIO()
     save_image(img, stringIO, format, jpeg_quality)
-    return buffer(stringIO.getvalue())
+    return (stringIO.getvalue())
 
 def save_image(img, target, format, jpeg_quality=85):
     # img is a PIL image
@@ -2338,7 +2376,7 @@ def kahelo(argstring=None):
         r = apply_command(options)
         return r
     except KeyboardInterrupt:
-        print '\n** Interrupted by user.\n'
+        print('\n** Interrupted by user.\n')
     except CustomException:
         pass
 
