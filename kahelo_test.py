@@ -5,6 +5,7 @@ kahelo-test.py <server> <db_name>
 <db_name> an existing local tile database to test tile counting
 """
 
+from __future__ import print_function
 
 import os
 import sys
@@ -14,7 +15,7 @@ from kahelo import kahelo, db_factory
 
 def main():
     if len(sys.argv) != 3:
-        print('kahelo-test.py <server> <db_name>')
+        print(__doc__)
         exit(1)
 
     url = sys.argv[1]
@@ -29,10 +30,11 @@ def main():
         for db2 in ('kahelo', 'rmaps', 'folder', 'maverick'):
             print('---', db1, db2)
             test_db(url, db1, 'server', db2, 'jpg', trace='')
+            
     test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-quiet')
     test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-verbose')
-    test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-verbose')
-    # TODO : tester -inside
+    
+    # TODO : test -inside
 
     test_contours()
     test_tile_coords(db_name)
@@ -123,7 +125,7 @@ def compare_files(name1, name2):
         x2 = f.read()
     #return x1 == x2
     if len(x1) != len(x2):
-        print ('Size different', len(x1), len(x2))
+        print('File sizes are different', name1, len(x1), name2, len(x2))
         return False
     else:
         r = True
@@ -205,7 +207,7 @@ def test_db(url, db_format, tile_format, db_dest_format, tile_dest_format, trace
     db4.close()
 
     # check -view
-    # ED: no work because the size of the images are not the same
+    # correct test required (track is drawn in first call, not in second one)
     # kahelo('-view test2.db -zoom 12 -contour test.gpx -image test1.png %s' % trace)
     # kahelo('-view test3.db -zoom 12 -records -image test2.png %s' % trace)
     # check('11', compare_files('test1.png', 'test2.png'))
@@ -220,11 +222,11 @@ def test_db(url, db_format, tile_format, db_dest_format, tile_dest_format, trace
     db2 = db_factory('test2.db')
     db3 = db_factory('test3.db')
     db4 = db_factory('test4.db')
-    rg = list(range(0, 21))
-    check('12', db2.count_tiles(rg) == db3.count_tiles(rg))
-    check('13', db2.count_tiles(rg) == db4.count_tiles(rg))
-    check('14', set(db2.list_tiles(rg)) == set(db3.list_tiles(rg)))
-    check('15', set(db2.list_tiles(rg)) == set(db4.list_tiles(rg)))
+    zooms = range(0, 21)
+    check('12', db2.count_tiles(zooms) == db3.count_tiles(zooms))
+    check('13', db2.count_tiles(zooms) == db4.count_tiles(zooms))
+    check('14', set(db2.list_tiles(zooms)) == set(db3.list_tiles(zooms)))
+    check('15', set(db2.list_tiles(zooms)) == set(db4.list_tiles(zooms)))
     db2.close()
     db3.close()
     db4.close()
