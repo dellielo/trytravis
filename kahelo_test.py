@@ -1,6 +1,6 @@
 """
 Test suite for kahelo.
-kahelo-test.py <server> <db_name>
+kahelo_test.py <server> <db_name>
 <server> a tile server, e.g. OpenStreetMap
 <db_name> an existing local tile database to test tile counting
 """
@@ -26,19 +26,20 @@ def main():
 
     define_tile_sets()
 
-    for db1 in ('kahelo', 'rmaps', 'folder', 'maverick'):
-        for db2 in ('kahelo', 'rmaps', 'folder', 'maverick'):
-            print('---', db1, db2)
-            test_db(url, db1, 'server', db2, 'jpg', trace='')
-            
-    test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-quiet')
-    test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-verbose')
+    #for db1 in ('kahelo', 'rmaps', 'folder', 'maverick'):
+    #    for db2 in ('kahelo', 'rmaps', 'folder', 'maverick'):
+    #        print('---', db1, db2)
+    #        test_db(url, db1, 'server', db2, 'png', trace='') # jpg
+    #        
+    #test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-quiet')
+    #test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-verbose')
     
     # TODO : test -inside
 
-    test_contours()
+    #test_view()
+    #test_contours()
     test_tile_coords(db_name)
-    test_zoom_subdivision(url)
+    #test_zoom_subdivision(url)
 
     if test_result == True:
         print('All tests ok.')
@@ -234,6 +235,11 @@ def test_db(url, db_format, tile_format, db_dest_format, tile_dest_format, trace
     clean()
 
 
+def test_view():
+    kahelo('-view tests/easter.db -zoom 12 -records -image test1.png')
+    check('check view 1', compare_files(os.path.join('tests', 'easter12.png'), 'test1.png'))
+
+
 def test_contours():
     # test -contour versus -contours
     kahelo('-describe test.db -db kahelo')
@@ -250,7 +256,7 @@ def test_contours():
 
 
 def test_tile_coords(db_name):
-    for zoom in range(1, 11):
+    for zoom in range(1, 10):
         max = 2 ** zoom - 1
         stat1 = kahelo('-count %s -quiet -records -zoom %d' % (db_name, zoom))
         stat2 = kahelo('-count %s -quiet -tiles 0,0,%d,%d  -zoom %d' % (db_name, max, max, zoom))
