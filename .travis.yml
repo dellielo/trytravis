@@ -1,3 +1,8 @@
 language: python
-rvm:
- - 3.6
+
+env:
+  - PYTHON=2.7 DEPS=latest BACKEND=agg DOCTESTS=true
+  - PYTHON=3.6 DEPS=latest BACKEND=agg DOCTESTS=true
+
+script:
+  - flake8 --ignore E121,E123,E126,E226,E24,E704,E741,W503,W504 kahelo.py
