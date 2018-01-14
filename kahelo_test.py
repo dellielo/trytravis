@@ -9,7 +9,12 @@ import os
 import sys
 import shutil
 import subprocess
-from kahelo import kahelo, db_factory, stop_server
+if sys.version_info > (3,):
+    import configparser
+else:
+    import ConfigParser
+
+import kahelo
 
 
 def main():
@@ -21,21 +26,27 @@ def main():
 
     p = subprocess.Popen('python kahelo.py -server tests/easter.db', shell=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
     url = 'http://127.0.0.1:80/{zoom}/{x}/{y}.jpg'
+    
+    # make sure tests are done with known configuration
+    os.rename('kahelo.config', 'kahelo.config.backup')
+    os.rename('kahelo.config.advanced', 'kahelo.config.advanced.backup')
+    kahelo.createconfig('kahelo.config', kahelo.DEFAULTS)
+    kahelo.createconfig('kahelo.config.advanced', kahelo.DEFAULTS_ADVANCED)
 
     try:
         define_tile_sets()
 
-        for db1 in ('kahelo', 'rmaps', 'folder', 'maverick'):
-            for db2 in ('kahelo', 'rmaps', 'folder', 'maverick'):
-                print('---', db1, db2)
-                test_db(url, db1, 'server', db2, 'png', trace='-verbose') # jpg
-                
-        test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-quiet')
-        test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-verbose')
+        #for db1 in ('kahelo', 'rmaps', 'folder', 'maverick'):
+        #    for db2 in ('kahelo', 'rmaps', 'folder', 'maverick'):
+        #        print('---', db1, db2)
+        #        test_db(url, db1, 'server', db2, 'png', trace='-verbose') # jpg
+        #        
+        #test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-quiet')
+        #test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-verbose')
         
         # TODO : test -inside
 
-        #test_view()
+        test_view()
         test_contours()
         test_tile_coords(db_name)
         test_zoom_subdivision(url)
@@ -45,11 +56,15 @@ def main():
         else:
             print('Failure...')
 
+    finally:
+        kahelo.stop_server()
         os.remove('test.gpx')
         os.remove('test2.gpx')
         os.remove('test.project')
-    finally:
-        stop_server()
+        os.remove('kahelo.config')
+        os.remove('kahelo.config.advanced')
+        os.rename('kahelo.config.backup', 'kahelo.config')
+        os.rename('kahelo.config.advanced.backup', 'kahelo.config.advanced')
 
 
 GPX1 = """\
@@ -164,41 +179,41 @@ def test_db(url, db_format, tile_format, db_dest_format, tile_dest_format, trace
     clean()
 
     # describe test databases
-    kahelo('-describe test.db  -db %s -tile_f %s -url %s %s' % (db_format, tile_format, url, trace))
-    kahelo('-describe test2.db -db %s -tile_f %s -url %s %s' % (db_dest_format, tile_dest_format, url, trace))
-    kahelo('-describe test3.db -db %s -tile_f %s -url %s %s' % (db_dest_format, tile_dest_format, url, trace))
-    kahelo('-describe test4.db -db %s -tile_f %s -url %s %s' % (db_dest_format, tile_dest_format, url, trace))
+    kahelo.kahelo('-describe test.db  -db %s -tile_f %s -url %s %s' % (db_format, tile_format, url, trace))
+    kahelo.kahelo('-describe test2.db -db %s -tile_f %s -url %s %s' % (db_dest_format, tile_dest_format, url, trace))
+    kahelo.kahelo('-describe test3.db -db %s -tile_f %s -url %s %s' % (db_dest_format, tile_dest_format, url, trace))
+    kahelo.kahelo('-describe test4.db -db %s -tile_f %s -url %s %s' % (db_dest_format, tile_dest_format, url, trace))
 
     # check counting on empty databases
-    stat = kahelo('-count test.db -zoom 10-11 -track test.gpx %s' % trace)
+    stat = kahelo.kahelo('-count test.db -zoom 10-11 -track test.gpx %s' % trace)
     check('test_db 1', stat == (13, 0, 0, 13))
-    stat = kahelo('-count test.db -zoom 12 -contour test.gpx %s' % trace)
+    stat = kahelo.kahelo('-count test.db -zoom 12 -contour test.gpx %s' % trace)
     check('test_db 2', stat == (12, 0, 0, 12))
-    stat = kahelo('-count test.db -project test.project %s' % trace)
+    stat = kahelo.kahelo('-count test.db -project test.project %s' % trace)
     check('test_db 3', stat == (25, 0, 0, 25))
 
     # insert some track and contour
-    kahelo('-insert test.db -zoom 10-11 -track test.gpx %s' % trace)
-    kahelo('-insert test.db -zoom 12 -contour test.gpx %s' % trace)
+    kahelo.kahelo('-insert test.db -zoom 10-11 -track test.gpx %s' % trace)
+    kahelo.kahelo('-insert test.db -zoom 12 -contour test.gpx %s' % trace)
 
     # check counting after insertion
-    stat = kahelo('-count test.db -project test.project %s' % trace)
+    stat = kahelo.kahelo('-count test.db -project test.project %s' % trace)
     check('test_db 4', stat == (25, 25, 0, 0))
-    stat = kahelo('-count test.db -records %s' % trace)
+    stat = kahelo.kahelo('-count test.db -records %s' % trace)
     check('test_db 5', stat == (25, 25, 0, 0))
-    stat = kahelo('-count test.db -records -zoom 10,11,12 %s' % trace)
+    stat = kahelo.kahelo('-count test.db -records -zoom 10,11,12 %s' % trace)
     check('test_db 6', stat == (25, 25, 0, 0))
 
     # export using various tile sets
-    kahelo('-import test2.db -track test.gpx   -zoom 10-11 -source test.db %s' % trace)
-    kahelo('-import test2.db -contour test.gpx -zoom 12    -source test.db %s' % trace)
-    kahelo('-export test.db  -project test.project         -dest test3.db %s' % trace)
-    kahelo('-export test.db  -records                      -dest test4.db %s' % trace)
+    kahelo.kahelo('-import test2.db -track test.gpx   -zoom 10-11 -source test.db %s' % trace)
+    kahelo.kahelo('-import test2.db -contour test.gpx -zoom 12    -source test.db %s' % trace)
+    kahelo.kahelo('-export test.db  -project test.project         -dest test3.db %s' % trace)
+    kahelo.kahelo('-export test.db  -records                      -dest test4.db %s' % trace)
 
     # check counts by using count_tiles and list_tiles methods
-    db2 = db_factory('test2.db')
-    db3 = db_factory('test3.db')
-    db4 = db_factory('test4.db')
+    db2 = kahelo.db_factory('test2.db')
+    db3 = kahelo.db_factory('test3.db')
+    db4 = kahelo.db_factory('test4.db')
     zooms = list(range(0, 21))
     check('7', db2.count_tiles(zooms) == db3.count_tiles(zooms))
     check('8', db2.count_tiles(zooms) == db4.count_tiles(zooms))
@@ -215,15 +230,15 @@ def test_db(url, db_format, tile_format, db_dest_format, tile_dest_format, trace
     # check('11', compare_files('test1.png', 'test2.png'))
 
     # delete all tiles
-    kahelo('-delete test2.db -zoom 10-11 -track test.gpx %s' % trace)
-    kahelo('-delete test2.db -zoom 12  -contour test.gpx %s' % trace)
-    kahelo('-delete test3.db -project test.project %s' % trace)
-    kahelo('-delete test4.db -records %s' % trace)
+    kahelo.kahelo('-delete test2.db -zoom 10-11 -track test.gpx %s' % trace)
+    kahelo.kahelo('-delete test2.db -zoom 12  -contour test.gpx %s' % trace)
+    kahelo.kahelo('-delete test3.db -project test.project %s' % trace)
+    kahelo.kahelo('-delete test4.db -records %s' % trace)
 
     # check counts by using count_tiles and list_tiles methods
-    db2 = db_factory('test2.db')
-    db3 = db_factory('test3.db')
-    db4 = db_factory('test4.db')
+    db2 = kahelo.db_factory('test2.db')
+    db3 = kahelo.db_factory('test3.db')
+    db4 = kahelo.db_factory('test4.db')
     zooms = range(0, 21)
     check('12', db2.count_tiles(zooms) == db3.count_tiles(zooms))
     check('13', db2.count_tiles(zooms) == db4.count_tiles(zooms))
@@ -237,18 +252,27 @@ def test_db(url, db_format, tile_format, db_dest_format, tile_dest_format, trace
 
 
 def test_view():
-    kahelo('-view tests/easter.db -zoom 12 -records -image test1.png')
-    check('check view 1', compare_files(os.path.join('tests', 'easter12.png'), 'test1.png'))
+    kahelo.kahelo('-view tests/easter.db -zoom 12 -records -image test.png')
+    check('check view 1', compare_files(os.path.join('tests', 'easter12a.png'), 'test.png'))
+    
+    config = kahelo.KaheloConfigParser()
+    config.read('kahelo.config')
+    config.set('view', 'draw_tracks', 'False')
+    with open('kahelo.config', 'wb') as configfile:
+        config.write(configfile)
+        
+    kahelo.kahelo('-view tests/easter.db -zoom 12 -records -image test.png')
+    check('check view 1', compare_files(os.path.join('tests', 'easter12b.png'), 'test.png'))
 
 
 def test_contours():
     # test -contour versus -contours
-    kahelo('-describe test.db -db kahelo')
+    kahelo.kahelo('-describe test.db -db kahelo')
     stat1 = []
     stat2 = []
     for zoom in range(10, 17):
-        stat1.append(kahelo('-count test.db -zoom %d -contour  test2.gpx' % zoom)[0])
-        stat2.append(kahelo('-count test.db -zoom %d -contours test2.gpx' % zoom)[0])
+        stat1.append(kahelo.kahelo('-count test.db -zoom %d -contour  test2.gpx' % zoom)[0])
+        stat2.append(kahelo.kahelo('-count test.db -zoom %d -contours test2.gpx' % zoom)[0])
 
     check('-contour', stat1 == [4, 10, 12, 22, 51, 128, 384])
     check('-contours', stat2 == [4, 10, 12, 20, 35, 82, 225])
@@ -259,28 +283,28 @@ def test_contours():
 def test_tile_coords(db_name):
     for zoom in range(1, 9):
         max = 2 ** zoom - 1
-        stat1 = kahelo('-count %s -quiet -records -zoom %d' % (db_name, zoom))
-        stat2 = kahelo('-count %s -quiet -tiles 0,0,%d,%d  -zoom %d' % (db_name, max, max, zoom))
+        stat1 = kahelo.kahelo('-count %s -quiet -records -zoom %d' % (db_name, zoom))
+        stat2 = kahelo.kahelo('-count %s -quiet -tiles 0,0,%d,%d  -zoom %d' % (db_name, max, max, zoom))
         print(stat1, stat2)
         check('-tiles', stat1[1:-1] == stat2[1:-1])
 
 
 def test_zoom_subdivision(url):
-    kahelo('-describe test.db -db kahelo -tile_ jpg -url %s' % url)
-    kahelo('-insert test.db -zoom 10-12 -track test.gpx')
-    stat = kahelo('-count test.db -zoom 10 -track test.gpx')
+    kahelo.kahelo('-describe test.db -db kahelo -tile_ jpg -url %s' % url)
+    kahelo.kahelo('-insert test.db -zoom 10-12 -track test.gpx')
+    stat = kahelo.kahelo('-count test.db -zoom 10 -track test.gpx')
     check('subdiv1', stat == (4, 4, 0, 0))
-    stat = kahelo('-count test.db -zoom 11 -track test.gpx')
+    stat = kahelo.kahelo('-count test.db -zoom 11 -track test.gpx')
     check('subdiv2', stat == (9, 9, 0, 0))
-    stat = kahelo('-count test.db -zoom 12 -track test.gpx')
+    stat = kahelo.kahelo('-count test.db -zoom 12 -track test.gpx')
     check('subdiv3', stat == (11, 11, 0, 0))
-    stat = kahelo('-count test.db -zoom 11/10 -track test.gpx')
+    stat = kahelo.kahelo('-count test.db -zoom 11/10 -track test.gpx')
     check('subdiv4', stat == (16, 9, 0, 7))
-    stat = kahelo('-count test.db -zoom 12/10 -track test.gpx')
+    stat = kahelo.kahelo('-count test.db -zoom 12/10 -track test.gpx')
     check('subdiv5', stat == (64, 11, 0, 53))
-    stat = kahelo('-count test.db -zoom 12/11 -track test.gpx')
+    stat = kahelo.kahelo('-count test.db -zoom 12/11 -track test.gpx')
     check('subdiv6', stat == (36, 11, 0, 25))
-    stat = kahelo('-count test.db -zoom 12/12 -track test.gpx')
+    stat = kahelo.kahelo('-count test.db -zoom 12/12 -track test.gpx')
     check('subdiv7', stat == (11, 11, 0, 0))
     remove_db('test.db')
 
