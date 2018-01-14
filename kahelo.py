@@ -2114,12 +2114,18 @@ def do_server(db_name, options):
     keep_running = True
     while keep_running:
         server.handle_request()
+    self.shutdown()
 
 class TileServerHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         global keep_running
         global db
         try:
+            if 'SHUTDOWN' in self.path:
+                keep_running = False
+                self.send_response(200)
+                return
+            
             m = re.search(r'/(\d+)/(\d+)/(\d+)\.jpg', self.path)
             if not m:
                 raise IOError
@@ -2141,6 +2147,9 @@ class TileServerHTTPRequestHandler(BaseHTTPRequestHandler):
 
         except IOError:
             self.send_error(404, 'file not found')
+            
+def stop_server():
+    requests.urlopen('http://127.0.0.1:80/SHUTDOWN')
 
 # -stat : database statistics ------------------------------------------------
 

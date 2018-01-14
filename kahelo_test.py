@@ -1,8 +1,6 @@
 """
 Test suite for kahelo.
-kahelo_test.py <server> <db_name>
-<server> a tile server, e.g. OpenStreetMap
-<db_name> an existing local tile database to test tile counting
+$ ./kahelo_test.py
 """
 
 from __future__ import print_function
@@ -10,45 +8,48 @@ from __future__ import print_function
 import os
 import sys
 import shutil
-from kahelo import kahelo, db_factory
+import subprocess
+from kahelo import kahelo, db_factory, stop_server
 
 
 def main():
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 1:
         print(__doc__)
         exit(1)
 
-    url = sys.argv[1]
-    db_name = sys.argv[2]
+    db_name = 'tests/easter.db'
 
-    if url == 'localhost':
-        url = 'http://127.0.0.1:80/{zoom}/{x}/{y}.jpg'
+    p = subprocess.Popen('python kahelo.py -server tests/easter.db', shell=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
+    url = 'http://127.0.0.1:80/{zoom}/{x}/{y}.jpg'
 
-    define_tile_sets()
+    try:
+        define_tile_sets()
 
-    #for db1 in ('kahelo', 'rmaps', 'folder', 'maverick'):
-    #    for db2 in ('kahelo', 'rmaps', 'folder', 'maverick'):
-    #        print('---', db1, db2)
-    #        test_db(url, db1, 'server', db2, 'png', trace='') # jpg
-    #        
-    #test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-quiet')
-    #test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-verbose')
-    
-    # TODO : test -inside
+        for db1 in ('kahelo', 'rmaps', 'folder', 'maverick'):
+            for db2 in ('kahelo', 'rmaps', 'folder', 'maverick'):
+                print('---', db1, db2)
+                test_db(url, db1, 'server', db2, 'png', trace='-verbose') # jpg
+                
+        test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-quiet')
+        test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-verbose')
+        
+        # TODO : test -inside
 
-    #test_view()
-    #test_contours()
-    test_tile_coords(db_name)
-    #test_zoom_subdivision(url)
+        #test_view()
+        test_contours()
+        test_tile_coords(db_name)
+        test_zoom_subdivision(url)
 
-    if test_result == True:
-        print('All tests ok.')
-    else:
-        print('Failure...')
+        if test_result == True:
+            print('All tests ok.')
+        else:
+            print('Failure...')
 
-    os.remove('test.gpx')
-    os.remove('test2.gpx')
-    os.remove('test.project')
+        os.remove('test.gpx')
+        os.remove('test2.gpx')
+        os.remove('test.project')
+    finally:
+        stop_server()
 
 
 GPX1 = """\
@@ -256,7 +257,7 @@ def test_contours():
 
 
 def test_tile_coords(db_name):
-    for zoom in range(1, 10):
+    for zoom in range(1, 9):
         max = 2 ** zoom - 1
         stat1 = kahelo('-count %s -quiet -records -zoom %d' % (db_name, zoom))
         stat2 = kahelo('-count %s -quiet -tiles 0,0,%d,%d  -zoom %d' % (db_name, max, max, zoom))
