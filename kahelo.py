@@ -2005,7 +2005,7 @@ def do_makeview(db_name, options):
         makeview_tile(tiles, db, mosaic, draw, tile_width, x0, y0, x, y, zoom, options, index, n, counters)
 
     # draw points at track coordinates
-    if options.view.draw_points and not options.db_tiles and not options.coord_tiles:
+    if options.view.draw_points and not options.db_tiles:
         points_tu = track_points(source, zoom, options)
 
         for x, y in points_tu:
@@ -2013,11 +2013,11 @@ def do_makeview(db_name, options):
             draw.rectangle((X-2, Y-2, X + 2, Y + 2), fill=(255,0,0))
 
     # draw track
-    if options.view.draw_tracks and not options.db_tiles and not options.coord_tiles:
+    if options.view.draw_tracks and not options.db_tiles:
         draw_tracks(options, draw, source, x0, y0, zoom, tile_width)
 
     # draw circles
-    if options.view.draw_circles and not options.db_tiles and not options.coord_tiles:
+    if options.view.draw_circles and not options.db_tiles:
         points_tu = track_points(source, zoom, options)
 
         radius_km = options.radius
