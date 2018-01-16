@@ -1241,7 +1241,10 @@ class SqliteDatabase(TileDatabase):
     def __init__(self, db_name, tile_format, url_template):
         TileDatabase.__init__(self, db_name, tile_format, url_template)
         self.conn = sqlite3.connect(db_name)
-        self.conn.text_factory = str
+        if sys.version_info < (3,):
+            self.conn.text_factory = str
+        else:
+            self.conn.text_factory = bytes
         self.cursor = self.conn.cursor()
 
     def execute(self, request, args=[]):
@@ -1994,7 +1997,7 @@ def do_makeview(db_name, options):
         error('too many tiles for image size')
 
     # create image
-    mosaic = Image.new('RGBA', (nx * tile_width, ny * tile_width), options.tiles.background_color)
+    mosaic = Image.new('RGB', (nx * tile_width, ny * tile_width), options.tiles.background_color)
     draw = ImageDraw.Draw(mosaic)
 
     # draw tiles
