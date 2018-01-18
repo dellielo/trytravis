@@ -5,7 +5,7 @@ env:
   - PYTHON=3.6 DEPS=latest BACKEND=agg DOCTESTS=true
 
 install:
-  - pip install tox
+  - pip install tox-travis
   - pip install .
   
 script:
