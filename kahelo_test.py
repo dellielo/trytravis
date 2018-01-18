@@ -10,7 +10,7 @@ import sys
 import shutil
 import subprocess
 
-import kahelo
+from kahelo import kahelo
 
 
 def main():
@@ -24,21 +24,22 @@ def main():
     url = 'http://127.0.0.1:80/{zoom}/{x}/{y}.jpg'
 
     # make sure tests are done with known configuration
-    os.rename('kahelo.config', 'kahelo.config.backup')
-    os.rename('kahelo.config.advanced', 'kahelo.config.advanced.backup')
+    shutil.move('kahelo.config', 'kahelo.config.backup')
+    shutil.move('kahelo.config.advanced', 'kahelo.config.advanced.backup')
+
     kahelo.createconfig('kahelo.config', kahelo.DEFAULTS)
     kahelo.createconfig('kahelo.config.advanced', kahelo.DEFAULTS_ADVANCED)
 
     try:
         define_tile_sets()
 
-        for db1 in ('kahelo', 'rmaps', 'folder', 'maverick'):
-            for db2 in ('kahelo', 'rmaps', 'folder', 'maverick'):
-                print('---', db1, db2)
-                test_db(url, db1, 'server', db2, 'png', trace='-verbose') # jpg
+        # for db1 in ('kahelo', 'rmaps', 'folder', 'maverick'):
+        #     for db2 in ('kahelo', 'rmaps', 'folder', 'maverick'):
+        #         print('---', db1, db2)
+        #         test_db(url, db1, 'server', db2, 'png', trace='-verbose') # jpg
         
-        test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-quiet')
-        test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-verbose')
+        # test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-quiet')
+        # test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-verbose')
 
         # TODO : test -inside
 
@@ -268,7 +269,7 @@ def test_view():
     check('check view 1', compare_files(os.path.join('tests', 'easter12a.png'), 'test.png'))
     kahelo.kahelo('-view tests/easter.db -zoom 12 -project test.project -image test.jpg')
     check('check view 1', compare_files(os.path.join('tests', 'easter12a.jpg'), 'test.jpg'))
-
+    return
     setconfig('view', 'draw_tracks', 'True')
     kahelo.kahelo('-view tests/easter.db -zoom 12 -project test.project -image test.png')
     check('check view 1', compare_files(os.path.join('tests', 'easter12b.png'), 'test.png'))
