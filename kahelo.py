@@ -1,3 +1,6 @@
+from __future__ import print_function
+
+
 IDENTITY = """\
 kahelo - tile management for GPS maps - kahelo.godrago.net\
 """
@@ -343,7 +346,6 @@ border_valid_color = 255 255 255 128    ; RGBA
 border_expired_color = 255 0 0 192      ; RGBA
 track_color = 255 0 0 2                 ; RGBW (width)
 
-
 [server]
 port = 80
 """
@@ -375,23 +377,15 @@ class KaheloConfigParser (configparser.ConfigParser):
     def getint(self, section, entry):
         try:
             return configparser.ConfigParser.getint(self, section, entry)
-        except Exception as inst:
-            print(type(inst ))    # the exception instance
-            print(inst)
+        except Exception as e:
+            print(e)
             self.error(section, entry)
 
     def getboolean(self, section, entry):
         try:
             return configparser.ConfigParser.getboolean(self, section, entry)
-        except Exception as inst:
-            print(inst)
-            self.error(section, entry)
-
-    def get(self, section, entry,**kwargs):
-        try:
-            val = configparser.ConfigParser.get(self, section, entry, **kwargs)
-            return val
-        except:
+        except Exception as e:
+            print(e)
             self.error(section, entry)
 
     def getcolor(self, section, entry, n):
@@ -1247,9 +1241,11 @@ class SqliteDatabase(TileDatabase):
     def __init__(self, db_name, tile_format, url_template):
         TileDatabase.__init__(self, db_name, tile_format, url_template)
         self.conn = sqlite3.connect(db_name)
-        self.conn.text_factory = str
+        if sys.version_info < (3,):
+            self.conn.text_factory = str
+        else:
+            self.conn.text_factory = bytes
         self.cursor = self.conn.cursor()
-
 
     def execute(self, request, args=[]):
         self.cursor.execute(request, args)
@@ -1628,7 +1624,7 @@ def decsep(n):
 # used by -insert and -import/-export
 
 # import actions
-NOP, INSERT, LATEST = list(range(3))
+NOP, INSERT, LATEST = range(3)
 
 # force mode: insert if something available
 FORCE_MODE = (
@@ -1786,7 +1782,6 @@ def insert_tile(tiles, db, options, x, y, zoom, index, n, counters):
                 u = requests.urlopen(url, timeout=options.insert.timeout)
                 tile_buffer = six.BytesIO(u.read()) #io.BytesIO(u.read())
                 u.close()
-
                 break
             except urllib_error.HTTPError as e:
                 if e.code == 404:
@@ -1809,11 +1804,6 @@ def insert_tile(tiles, db, options, x, y, zoom, index, n, counters):
                 tile_buffer = create_blob_from_image(tile_image,
                                                     db.tile_format(),
                                                     options.tiles.jpeg_quality)
-#                tile_image = Image.open(resp.raw)
-#                tile_image = create_image_from_blob(tile_buffer)
-#                tile_buffer = create_blob_from_image(tile_image,
-#                                                     db.tile_format(),
-#                                                     options.tiles.jpeg_quality)
             except Exception as e:
                 tile_trace(options, x, y, zoom, index, n, 'image conversion error open ' + e)
                 counters.missing += 1
@@ -1978,90 +1968,86 @@ def delete_tile(tiles, db, x, y, zoom, options, index, size, counters):
 # -view : make image from gpx ------------------------------------------------
 
 def do_makeview(db_name, options):
-    try :
-        db = db_factory(db_name)
-        generator, source, zoom, radius = options_generate(options)
-        if len(zoom) > 1:
-            error('view does not apply to multiple zoom levels')
-        else:
-            zoom = zoom[0]
+    db = db_factory(db_name)
 
-        tiles = tileset(options, db, db_filter=options.inside)
-        n = tiles.size()
-        counters = TileCounters()
+    generator, source, zoom, radius = options_generate(options)
+    if len(zoom) > 1:
+        error('view does not apply to multiple zoom levels')
+    else:
+        zoom = zoom[0]
 
-        if n == 0:
-            error('no tiles to display')
+    tiles = tileset(options, db, db_filter=options.inside)
+    n = tiles.size()
+    counters = TileCounters()
 
-        x0, y0, x1, y1 = tiles.binding_box()
-        nx = x1 - x0 + 1
-        ny = y1 - y0 + 1
+    if n == 0:
+        error('no tiles to display')
 
-        max_dim = max(nx, ny) * 256
-        if max_dim <= options.view.max_dim:
-            tile_width = 256
-        else:
-            tile_width = int(256.0 * options.view.max_dim / max_dim)
+    x0, y0, x1, y1 = tiles.binding_box()
+    nx = x1 - x0 + 1
+    ny = y1 - y0 + 1
 
-        if tile_width == 0:
-            error('too many tiles for image size')
+    max_dim = max(nx, ny) * 256
+    if max_dim <= options.view.max_dim:
+        tile_width = 256
+    else:
+        tile_width = int(256.0 * options.view.max_dim / max_dim)
 
-        # create image
-        mosaic = Image.new('RGBA', (nx * tile_width, ny * tile_width), options.tiles.background_color)
-        draw = ImageDraw.Draw(mosaic)
+    if tile_width == 0:
+        error('too many tiles for image size')
 
-        # draw tiles
-        for index, (x, y, z) in enumerate(tiles):
-            makeview_tile(tiles, db, mosaic, draw, tile_width, x0, y0, x, y, zoom, options, index, n, counters)
+    # create image
+    mosaic = Image.new('RGB', (nx * tile_width, ny * tile_width), options.tiles.background_color)
+    draw = ImageDraw.Draw(mosaic)
 
-        # draw points at track coordinates
-        if options.view.draw_points and not options.db_tiles and not options.coord_tiles:
-            points_tu = track_points(source, zoom, options)
+    # draw tiles
+    for index, (x, y, z) in enumerate(tiles):
+        makeview_tile(tiles, db, mosaic, draw, tile_width, x0, y0, x, y, zoom, options, index, n, counters)
 
+    # draw points at track coordinates
+    if options.view.draw_points and not options.db_tiles:
+        points_tu = track_points(source, zoom, options)
+
+        for x, y in points_tu:
+            X, Y = int((x - x0) * tile_width), int((y - y0) * tile_width)
+            draw.rectangle((X-2, Y-2, X + 2, Y + 2), fill=(255,0,0))
+
+    # draw track
+    if options.view.draw_tracks and not options.db_tiles:
+        draw_tracks(options, draw, source, x0, y0, zoom, tile_width)
+
+    # draw circles
+    if options.view.draw_circles and not options.db_tiles:
+        points_tu = track_points(source, zoom, options)
+
+        radius_km = options.radius
+        if radius_km is None:
+            x, y = points_tu[0]
+            radius_km = default_radius(x, y, zoom)
+
+        if radius_km > 0:
+            radius_tu = tile_hdistance_tu(x, y, zoom, radius_km)
             for x, y in points_tu:
                 X, Y = int((x - x0) * tile_width), int((y - y0) * tile_width)
-                draw.rectangle((X-2, Y-2, X + 2, Y + 2), fill=(255,0,0))
+                d = radius_tu * tile_width
+                draw.ellipse((X-d, Y-d, X + d, Y + d))
 
-        # draw track
-        if options.view.draw_tracks and not options.db_tiles and not options.coord_tiles:
-            draw_tracks(options, draw, source, x0, y0, zoom, tile_width)
-
-        # draw circles
-        if options.view.draw_circles and not options.db_tiles and not options.coord_tiles:
-            points_tu = track_points(source, zoom, options)
-
-            radius_km = options.radius
-            if radius_km is None:
-                x, y = points_tu[0]
-                radius_km = default_radius(x, y, zoom)
-
-            if radius_km > 0:
-                radius_tu = tile_hdistance_tu(x, y, zoom, radius_km)
-                for x, y in points_tu:
-                    X, Y = int((x - x0) * tile_width), int((y - y0) * tile_width)
-                    d = radius_tu * tile_width
-                    draw.ellipse((X-d, Y-d, X + d, Y + d))
-
-        # save image and display if required
-        try:
-            print (mosaic, options.image)
-            if options.image is None:
-                imagename = APPNAME + '-view-image.jpg'
-                ret = mosaic.save(imagename)
-                webbrowser.open(imagename, new=2)
-            else:
-                imagename = options.image
-                mosaic.save(imagename)
-        except Exception as e:
-            print(e)
-            error('error saving image ' + imagename)
-
-        display_report(options, ('Tiles in set', n),
-                                ('Displayed', counters.available),
-                                ('Missing', counters.missing))
+    # save image and display if required
+    try:
+        if options.image is None:
+            imagename = APPNAME + '-view-image.jpg'
+            mosaic.save(imagename)
+            webbrowser.open(imagename, new=2)
+        else:
+            imagename = options.image
+            mosaic.save(imagename)
     except Exception as e:
         print(e)
-        print ('Erroror')
+        error('error saving image ' + imagename)
+
+    display_report(options, ('Tiles in set', n),
+                            ('Displayed', counters.available),
+                            ('Missing', counters.missing))
 
 def makeview_tile(tiles, db, mosaic, draw, tile_width, x0, y0, x, y, zoom, options, index, n, counters):
     exists, date, tile = db.retrieve(x, y, zoom)
@@ -2131,12 +2117,18 @@ def do_server(db_name, options):
     keep_running = True
     while keep_running:
         server.handle_request()
+    self.shutdown()
 
 class TileServerHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         global keep_running
         global db
         try:
+            if 'SHUTDOWN' in self.path:
+                keep_running = False
+                self.send_response(200)
+                return
+            
             m = re.search(r'/(\d+)/(\d+)/(\d+)\.jpg', self.path)
             if not m:
                 raise IOError
@@ -2158,6 +2150,9 @@ class TileServerHTTPRequestHandler(BaseHTTPRequestHandler):
 
         except IOError:
             self.send_error(404, 'file not found')
+            
+def stop_server():
+    requests.urlopen('http://127.0.0.1:80/SHUTDOWN')
 
 # -stat : database statistics ------------------------------------------------
 
@@ -2234,7 +2229,7 @@ def create_blob_from_image(img, format, jpeg_quality=85):
     # save_image(img, stringIO, format, jpeg_quality)
     stringIO = six.BytesIO()
     save_image(img, stringIO, format, jpeg_quality)
-    return (stringIO.getvalue())
+    return stringIO.getvalue()
 
 def save_image(img, target, format, jpeg_quality=85):
     # img is a PIL image
