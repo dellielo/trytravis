@@ -24,6 +24,10 @@ def main():
     url = 'http://127.0.0.1:80/{zoom}/{x}/{y}.jpg'
 
     # make sure tests are done with known configuration
+    if os.path.isfile('kahelo.config.backup'):
+        os.remove('kahelo.config.backup')
+    if os.path.isfile('kahelo.config.advanced.backup'):
+        os.remove('kahelo.config.advanced.backup')
     os.rename('kahelo.config', 'kahelo.config.backup')
     os.rename('kahelo.config.advanced', 'kahelo.config.advanced.backup')
     kahelo.createconfig('kahelo.config', kahelo.DEFAULTS)
@@ -47,7 +51,7 @@ def main():
         test_tile_coords(db_name)
         test_zoom_subdivision(url)
 
-        if test_result == True:
+        if test_result is True:
             print('All tests ok.')
         else:
             print('Failure...')
@@ -197,7 +201,7 @@ def test_db(url, db_format, tile_format, db_dest_format, tile_dest_format, trace
     kahelo.kahelo('-describe test2.db -db %s -tile_f %s -url %s %s' % (db_dest_format, tile_dest_format, url, trace))
     kahelo.kahelo('-describe test3.db -db %s -tile_f %s -url %s %s' % (db_dest_format, tile_dest_format, url, trace))
     kahelo.kahelo('-describe test4.db -db %s -tile_f %s -url %s %s' % (db_dest_format, tile_dest_format, url, trace))
-
+ 
     # check counting on empty databases
     stat = kahelo.kahelo('-count test.db -zoom 10-11 -track test.gpx %s' % trace)
     check('test_db 1', stat == (13, 0, 0, 13))
@@ -264,6 +268,7 @@ def test_view():
     setconfig('view', 'draw_tracks', 'False')
     setconfig('view', 'draw_tile_limits', 'False')
     setconfig('view', 'draw_tile_width', 'False')
+    setconfig('view', 'draw_circles', 'False')
     kahelo.kahelo('-view tests/easter.db -zoom 12 -project test.project -image test.png')
     check('check view 1', compare_files(os.path.join('tests', 'easter12a.png'), 'test.png'))
     kahelo.kahelo('-view tests/easter.db -zoom 12 -project test.project -image test.jpg')
