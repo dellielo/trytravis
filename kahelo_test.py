@@ -46,6 +46,7 @@ def main():
 
         # TODO : test -inside
 
+        test_stat()
         test_view()
         test_contours()
         test_tile_coords(db_name)
@@ -132,10 +133,12 @@ test_result = True
 def check(msg, boolean):
     global test_number, test_result
     test_number += 1
-    if boolean == False:
+    if boolean is False:
         print('Error on test #%d: %s' % (test_number, msg))
         test_result = False
         sys.exit(1)
+    else:
+        print('Test #%d: %s OK' % (test_number, msg))
 
 
 def compare_files(name1, name2):
@@ -300,6 +303,20 @@ def test_view():
 
     os.remove('test.png')
     os.remove('test.jpg')
+
+
+def test_stat():
+    temp = sys.stdout
+    with open('test.txt', 'wt') as sys.stdout:
+        try:
+            kahelo.kahelo('-stat ./tests/easter.db -quiet -records')
+            kahelo.kahelo('-stat ./tests/easter.db -quiet -project test.project')
+            kahelo.kahelo('-stat ./tests/easter.db -quiet -track test.gpx -zoom 10-11')
+            kahelo.kahelo('-stat ./tests/easter.db -quiet -track test2.gpx -zoom 10-12')
+        finally:
+            sys.stdout = temp
+    check('check stat', compare_files('tests/test_stat.txt', 'test.txt'))
+    os.remove('test.txt')
 
 
 def test_contours():
