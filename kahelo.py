@@ -2189,7 +2189,7 @@ def do_statistics(db_name, options):
         slen  = decsep(len(size[zoom]))
         smin  = decsep(min(size[zoom]))
         smax  = decsep(max(size[zoom]))
-        smean = decsep(sum(size[zoom]) / len(size[zoom]))
+        smean = decsep(sum(size[zoom]) // len(size[zoom]))
         stot  = decsep(sum(size[zoom]))
         print('%4d %6s %6s %6s %8s %12s' % (zoom, slen, smin, smax, smean, stot))
 
@@ -2199,7 +2199,7 @@ def do_statistics(db_name, options):
         slen  = decsep(len(sizes))
         smin  = decsep(min(sizes))
         smax  = decsep(max(sizes))
-        smean = decsep(sum(sizes) / len(sizes))
+        smean = decsep(sum(sizes) // len(sizes))
         stot  = decsep(sum(sizes))
     print('%4s %6s %6s %6s %8s %12s' % ('all', slen, smin, smax, smean, stot))
     print('-' * 29)
