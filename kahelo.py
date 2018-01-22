@@ -5,10 +5,14 @@ import os
 import re
 import math
 import argparse
-import io
 import webbrowser
 import itertools
 import random
+
+if sys.version_info < (3,):
+    import StringIO
+else:
+    import io
 
 try:
     import sqlite3
@@ -21,7 +25,6 @@ try:
 except:
     import xml.etree.ElementTree as ET
 
-import six
 import six.moves.urllib.request as requests
 import six.moves.urllib.error as urllib_error
 import six.moves.configparser as configparser
@@ -1299,10 +1302,7 @@ class KaheloDatabase(SqliteDatabase):
             self.execute("DELETE FROM tiles WHERE rowid = ?", row[0])
         if date is None:
             date = int(math.trunc(time()))
-        if sys.version_info > (3,):
-            buffer = memoryview
-        buf = tile_buffer #buffer(tile_buffer)
-        self.execute("INSERT INTO tiles VALUES (?,?,?,?,?)", date, x, y, zoom, buf) #buffer(tile_buffer)))
+        self.execute("INSERT INTO tiles VALUES (?,?,?,?,?)", date, x, y, zoom, tile_buffer)
 
     def delete(self, x, y, zoom):
         row = self.__retrieve(x, y, zoom)
@@ -1776,7 +1776,7 @@ def insert_tile(tiles, db, options, x, y, zoom, index, n, counters):
             try:
                 # no proxy handling...
                 u = requests.urlopen(url, timeout=options.insert.timeout)
-                tile_buffer = six.BytesIO(u.read()) #io.BytesIO(u.read())
+                tile_buffer = u.read()
                 u.close()
                 break
             except urllib_error.HTTPError as e:
@@ -1796,16 +1796,16 @@ def insert_tile(tiles, db, options, x, y, zoom, index, n, counters):
             pass
         else:
             try:
-                tile_image = Image.open(tile_buffer) #io.BytesIO(tile_buffer)
+                tile_image = create_image_from_blob(tile_buffer)
                 tile_buffer = create_blob_from_image(tile_image,
-                                                    db.tile_format(),
-                                                    options.tiles.jpeg_quality)
+                                                     db.tile_format(),
+                                                     options.tiles.jpeg_quality)
             except Exception as e:
-                tile_trace(options, x, y, zoom, index, n, 'image conversion error open ' + e)
+                tile_trace(options, x, y, zoom, index, n, 'image conversion error open ' + str(e))
                 counters.missing += 1
                 return
 
-        db.update(int(math.floor(time())), x, y, zoom, tile_buffer) #buffer(tile_buffer))
+        db.update(int(math.floor(time())), x, y, zoom, tile_buffer)
 
         counters.inserted += 1
         msg = 'updated' if exists_dst else 'inserted'
@@ -2219,20 +2219,27 @@ def do_statistics(db_name, options):
 
 def create_image_from_blob(blob):
     # blob is a string containing an entire image file
-    return Image.open(six.BytesIO(blob)) #io.StringIO(blob))
+    if sys.version_info < (3,):
+        return Image.open(StringIO.StringIO(blob))
+    else:
+        return Image.open(io.BytesIO(blob))
 
 def create_blob_from_image(img, format, jpeg_quality=85):
     # img is a PIL image
-    # return buffer with requested format
-    # stringIO = io.StringIO()
-    # save_image(img, stringIO, format, jpeg_quality)
-    stringIO = six.BytesIO()
-    save_image(img, stringIO, format, jpeg_quality)
-    return stringIO.getvalue()
+    # return buffer of image with requested format
+    # result is a buffer object or a bytes-like object
+    if sys.version_info < (3,):
+        stringIO = StringIO.StringIO()
+        save_image(img, stringIO, format, jpeg_quality)
+        return buffer(stringIO.getvalue())
+    else:
+        bytesIO = io.BytesIO()
+        save_image(img, bytesIO, format, jpeg_quality)
+        return bytesIO.getvalue()
 
 def save_image(img, target, format, jpeg_quality=85):
     # img is a PIL image
-    # target is filename or StringIO
+    # target is filename or StringIO/BytesIO
     if format == 'JPG':
         save_image_to_jpg(img, target, jpeg_quality)
     elif format == 'PNG':
