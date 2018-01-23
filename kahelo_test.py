@@ -20,7 +20,7 @@ def main():
 
     db_name = 'tests/easter.db'
 
-    p = subprocess.Popen('python kahelo.py -server tests/easter.db', shell=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
+    p = subprocess.Popen('python kahelo.py -server tests/easter.db', shell=True)
     url = 'http://127.0.0.1:80/{zoom}/{x}/{y}.jpg'
 
     # make sure tests are done with known configuration
