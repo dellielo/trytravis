@@ -6,7 +6,6 @@ env:
 
 install:
   - pip install tox-travis
-  - pip install .
   
 script:
-  - py.test
+  - tox
