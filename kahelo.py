@@ -508,16 +508,12 @@ def error(msg):
 def apply_command(options):
     if options.do_version:
         print_version()
-        raise CustomException()
-    if options.do_license:
+    elif options.do_license:
         print_license()
-        raise CustomException()
-    if options.do_help:
+    elif options.do_help:
         print_help()
-        raise CustomException()
-    if options.do_helphtml:
+    elif options.do_helphtml:
         do_helphtml()
-        raise CustomException()
     elif options.db_describe:
         do_describe(options.db_name, options)
     elif options.db_count:
