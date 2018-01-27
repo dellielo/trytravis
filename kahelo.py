@@ -400,9 +400,51 @@ class KaheloConfigParser (configparser.ConfigParser):
         else:
             self.error(section, entry)
 
+
+def configfilename():
+    if __name__ == "__main__":
+        name = sys.argv[0]
+    else:
+        name = __file__
+    return os.path.splitext(name)[0] + '.config'
+
+
 def createconfig(config_filename, defaults):
     with open(config_filename, 'wt') as f:
         f.writelines(defaults)
+
+
+def read_config(options):
+    config_filename = configfilename()
+    advanced_config_filename = config_filename + '.advanced'
+
+    try:
+        if not os.path.exists(config_filename):
+            createconfig(config_filename, DEFAULTS)
+        if not os.path.exists(advanced_config_filename):
+            createconfig(advanced_config_filename, DEFAULTS_ADVANCED)
+    except:
+        error('error creating configuration file')
+
+    try:
+        getconfig(options, config_filename, advanced_config_filename)
+    except CustomException:
+        raise
+    except Exception as e:
+        error('error reading configuration file :' + str(e))
+
+
+def resetconfig():
+    createconfig(configfilename(), DEFAULTS)
+
+
+def setconfig(section, key, value):
+    config = KaheloConfigParser()
+    config.read(configfilename())
+    config.set(section, key, value)
+    with open(configfilename(), 'wt') as configfile:
+        config.write(configfile)
+
 
 def getconfig(options, config_filename, advanced_config_filename):
     class SubOptions: pass
@@ -469,29 +511,6 @@ def getconfig(options, config_filename, advanced_config_filename):
     validity = options.database.tile_validity * (3600 * 24)
     options.database.expiry_date = today - validity
 
-def read_config(options):
-    if __name__ == "__main__":
-        name = sys.argv[0]
-    else:
-        name = __file__
-
-    config_filename = os.path.splitext(name)[0] + '.config'
-    advanced_config_filename = config_filename + '.advanced'
-
-    try:
-        if not os.path.exists(config_filename):
-            createconfig(config_filename, DEFAULTS)
-        if not os.path.exists(advanced_config_filename):
-            createconfig(advanced_config_filename, DEFAULTS_ADVANCED)
-    except:
-        error('error creating configuration file')
-
-    try:
-        getconfig(options, config_filename, advanced_config_filename)
-    except CustomException:
-        raise
-    except Exception as e:
-        error('error reading configuration file :' + str(e))
 
 # -- Error handling ----------------------------------------------------------
 
