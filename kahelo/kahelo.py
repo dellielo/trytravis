@@ -2138,8 +2138,9 @@ class TileServerHTTPRequestHandler(BaseHTTPRequestHandler):
         global db
         try:
             if 'SHUTDOWN' in self.path:
-                keep_running = False
                 self.send_response(200)
+                self.end_headers() # Remote end closed connection without response
+                keep_running = False
                 return
 
             m = re.search(r'/(\d+)/(\d+)/(\d+)\.jpg', self.path)
@@ -2149,7 +2150,7 @@ class TileServerHTTPRequestHandler(BaseHTTPRequestHandler):
             zoom, x, y = m.group(1,2,3)
             zoom, x, y = int(zoom), int(x), int(y)
             exists, date, img = db.retrieve(x, y, zoom)
-            print(x, y, zoom, exists)
+            #print(x, y, zoom, exists)
 
             if not exists:
                 raise IOError

@@ -21,8 +21,29 @@ def main():
 
     db_name = 'tests/easter.db'
 
-    p = subprocess.Popen('kahelo -server tests/easter.db', shell=True)
-    print("Make server ok")
+    if os.name == 'nt':
+        mode = 4
+    else:
+        mode = 1
+
+    if mode == 1:
+        # no window for subprocess, traces from server mixed with traces from client
+        shell = False
+        creationflags = 0
+    elif mode == 2:
+        # window for subprocess (windows only)
+        shell = False
+        creationflags = subprocess.CREATE_NEW_CONSOLE
+    elif mode == 3:
+        # no window for subprocess, traces from server mixed with traces from client
+        shell = True
+        creationflags = 0
+    elif mode == 4:
+        # no window for subprocess, no mixed traces (windows only)
+        shell = True
+        creationflags = subprocess.CREATE_NEW_CONSOLE
+
+    p = subprocess.Popen('python kahelo.py -server tests/easter.db', shell=shell, creationflags=creationflags)
     url = 'http://127.0.0.1:80/{zoom}/{x}/{y}.jpg'
     time.sleep(1) # to let the time to write the config
 
@@ -193,7 +214,7 @@ def test_db(url, db_format, tile_format, db_dest_format, tile_dest_format, trace
     kahelo.kahelo('-describe test2.db -db %s -tile_f %s -url %s %s' % (db_dest_format, tile_dest_format, url, trace))
     kahelo.kahelo('-describe test3.db -db %s -tile_f %s -url %s %s' % (db_dest_format, tile_dest_format, url, trace))
     kahelo.kahelo('-describe test4.db -db %s -tile_f %s -url %s %s' % (db_dest_format, tile_dest_format, url, trace))
- 
+
     # check counting on empty databases
     stat = kahelo.kahelo('-count test.db -zoom 10-11 -track test.gpx %s' % trace)
     check('test_db 1', stat == (13, 0, 0, 13))
