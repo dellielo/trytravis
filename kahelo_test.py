@@ -44,6 +44,7 @@ def main():
         creationflags = subprocess.CREATE_NEW_CONSOLE
 
     server = kahelo.HTTPServerLayer()
+    server.port = 1028 # travis (or linux) block the port is less than 1024
     server.start_server(db_name)
     # kahelo.do_server("tests/easter.db", 80, "e")
     # p = subprocess.Popen('kahelo -server tests/easter.db', shell=shell, creationflags=creationflags)
