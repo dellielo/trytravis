@@ -52,10 +52,10 @@ def main():
     time.sleep(1) # to let the time to write the config
 
     # make sure tests are done with known configuration
-    # if os.path.exists(kahelo.configfilename()):
-    shutil.move(kahelo.configfilename(), kahelo.configfilename()+'.backup')
-    # if os.path.exists(kahelo.configfilename()+'.advanced'):
-    shutil.move(kahelo.configfilename()+'.advanced', kahelo.configfilename()+'.advanced.backup')
+    if os.path.exists(kahelo.configfilename()):
+        shutil.move(kahelo.configfilename(), kahelo.configfilename()+'.backup')
+    if os.path.exists(kahelo.configfilename()+'.advanced'):
+        shutil.move(kahelo.configfilename()+'.advanced', kahelo.configfilename()+'.advanced.backup')
 
     kahelo.createconfig(kahelo.configfilename(), kahelo.DEFAULTS)
     kahelo.createconfig(kahelo.configfilename()+'.advanced', kahelo.DEFAULTS_ADVANCED)
