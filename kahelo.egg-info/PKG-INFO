@@ -1,0 +1,23 @@
+Metadata-Version: 1.1
+Name: kahelo
+Version: 1.0.1
+Summary: kahelo - tile management for GPS maps - kahelo.godrago.net
+Home-page: https://github.com/gillesArcas/kahelo
+Author: Gilles Arcas
+Author-email: gilles.arcas@gmail.com
+License: MIT
+Download-URL: https://github.com/gillesArcas/kahelo
+Description: # kahelo
+        A command line program to download and manage tile databases
+        
+        [Help file](http://kahelo.godrago.net/kahelo.html)
+        
+Platform: UNKNOWN
+Classifier: Development Status :: 1 - Planning
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 3.2
+Classifier: Programming Language :: Python :: 3.4
+Classifier: Topic :: Scientific/Engineering :: GIS

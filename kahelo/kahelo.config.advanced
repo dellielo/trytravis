@@ -1,0 +1,10 @@
+
+[tracks]
+interpolate_points = True
+
+[view]
+true_tiles = True
+interpolated_points = False
+
+[tiles]
+ghost_tile_color = 64 64 64

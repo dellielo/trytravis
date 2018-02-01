@@ -1,39 +1,5 @@
 from __future__ import print_function
 
-import sys
-import os
-import re
-import math
-import argparse
-import webbrowser
-import itertools
-import random
-import threading 
-
-if sys.version_info < (3,):
-    import StringIO
-else:
-    import io
-
-try:
-    import sqlite3
-    sqlite3_available = True
-except:
-    sqlite3_available = False
-
-try:
-    import xml.etree.cElementTree as ET
-except:
-    import xml.etree.ElementTree as ET
-
-import six.moves.urllib.request as requests
-import six.moves.urllib.error as urllib_error
-import six.moves.configparser as configparser
-from six.moves.BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-
-from PIL import Image, ImageDraw
-from time import time, sleep, strftime, gmtime
-
 
 IDENTITY = """\
 kahelo - tile management for GPS maps - kahelo.godrago.net\
@@ -63,6 +29,37 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
+import sys
+import os
+import re
+from math import *
+
+import six
+import six.moves.urllib.request as requests
+import six.moves.urllib.error as urllib_error
+import six.moves.configparser as configparser
+
+from PIL import Image, ImageOps, ImageDraw
+from PIL import ImageFont
+from datetime import datetime
+from time import time, sleep, strftime, gmtime
+import argparse
+from random import randint
+import io
+import tempfile
+try:
+    import xml.etree.cElementTree as ET
+except:
+    import xml.etree.ElementTree as ET
+# import configparser
+import webbrowser
+import itertools
+from six.moves.BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+try:
+    import sqlite3
+    sqlite3_available = True
+except:
+    sqlite3_available = False
 
 # -- Constants ---------------------------------------------------------------
 
@@ -105,6 +102,7 @@ full help:
 
 class ArgumentParser(argparse.ArgumentParser):
     def __init__(self):
+        app_command = APPNAME + '.py'
         usage = USAGE.replace('APPNAME', APPNAME)
         argparse.ArgumentParser.__init__(self, usage=usage, add_help=False)
 
@@ -246,9 +244,9 @@ def complete_source(options):
     else:
         try:
             options.radius = float(options.radius)
+            if options.radius < 0:
+                raise
         except:
-            error('radius must be a positive number')
-        if options.radius < 0:
             error('radius must be a positive number')
 
     # used to find gpx files in path of project
@@ -281,7 +279,7 @@ def decode_range(s):
     """Decode a range string into a list of integers: 8-10,12,14 --> [8, 9, 10, 12, 14]"""
     R = []
     for x in s.split(','):
-        m = re.search(r'(\d+)-(\d+)', x)
+        m = re.search('(\d+)-(\d+)', x)
         if m:
             i1 = int(m.group(1))
             i2 = int(m.group(2))
@@ -394,58 +392,16 @@ class KaheloConfigParser (configparser.ConfigParser):
         try:
             s = configparser.ConfigParser.get(self, section, entry)
             x = tuple([int(x) for x in s.split()])
+            if len(x) == n:
+                return x
+            else:
+                raise
         except:
             self.error(section, entry)
-        if len(x) == n:
-            return x
-        else:
-            self.error(section, entry)
-
-
-def configfilename():
-    if __name__ == "__main__":
-        name = sys.argv[0]
-    else:
-        name = __file__
-    return os.path.splitext(name)[0] + '.config'
-
 
 def createconfig(config_filename, defaults):
     with open(config_filename, 'wt') as f:
         f.writelines(defaults)
-
-
-def read_config(options):
-    config_filename = configfilename()
-    advanced_config_filename = config_filename + '.advanced'
-
-    try:
-        if not os.path.exists(config_filename):
-            createconfig(config_filename, DEFAULTS)
-        if not os.path.exists(advanced_config_filename):
-            createconfig(advanced_config_filename, DEFAULTS_ADVANCED)
-    except:
-        error('error creating configuration file')
-
-    try:
-        getconfig(options, config_filename, advanced_config_filename)
-    except CustomException:
-        raise
-    except Exception as e:
-        error('error reading configuration file :' + str(e))
-
-
-def resetconfig():
-    createconfig(configfilename(), DEFAULTS)
-
-
-def setconfig(section, key, value):
-    config = KaheloConfigParser()
-    config.read(configfilename())
-    config.set(section, key, value)
-    with open(configfilename(), 'wt') as configfile:
-        config.write(configfile)
-
 
 def getconfig(options, config_filename, advanced_config_filename):
     class SubOptions: pass
@@ -508,10 +464,33 @@ def getconfig(options, config_filename, advanced_config_filename):
     # [tiles]
     options.tiles.ghost_tile_color = config.getcolor('tiles', 'ghost_tile_color', 3)
 
-    today = int(math.floor(time()))
+    today = int(floor(time()))
     validity = options.database.tile_validity * (3600 * 24)
     options.database.expiry_date = today - validity
 
+def read_config(options):
+    if __name__ == "__main__":
+        name = sys.argv[0]
+    else:
+        name = __file__
+
+    config_filename = os.path.splitext(name)[0] + '.config'
+    advanced_config_filename = config_filename + '.advanced'
+
+    try:
+        if not os.path.exists(config_filename):
+            createconfig(config_filename, DEFAULTS)
+        if not os.path.exists(advanced_config_filename):
+            createconfig(advanced_config_filename, DEFAULTS_ADVANCED)
+    except:
+        error('error creating configuration file')
+
+    try:
+        getconfig(options, config_filename, advanced_config_filename)
+    except CustomException:
+        raise
+    except Exception as e:
+        error('error reading configuration file :' + e)
 
 # -- Error handling ----------------------------------------------------------
 
@@ -528,12 +507,16 @@ def error(msg):
 def apply_command(options):
     if options.do_version:
         print_version()
-    elif options.do_license:
+        raise CustomException()
+    if options.do_license:
         print_license()
-    elif options.do_help:
+        raise CustomException()
+    if options.do_help:
         print_help()
-    elif options.do_helphtml:
+        raise CustomException()
+    if options.do_helphtml:
         do_helphtml()
+        raise CustomException()
     elif options.db_describe:
         do_describe(options.db_name, options)
     elif options.db_count:
@@ -565,10 +548,10 @@ def deg2tilecoord(lat_deg, lon_deg, zoom):
     given zoom.
     """
     try:
-        lat_rad = math.radians(lat_deg)
+        lat_rad = radians(lat_deg)
         n = 2.0 ** zoom
         xtile = (lon_deg + 180.0) / 360.0 * n
-        ytile = (1.0 - math.log(math.tan(lat_rad) + (1 / math.cos(lat_rad))) / math.pi) / 2.0 * n
+        ytile = (1.0 - log(tan(lat_rad) + (1 / cos(lat_rad))) / pi) / 2.0 * n
         return xtile, ytile
     except:
         error('error converting (%.4f, %.4f, %d) to tile' % (lat_deg, lon_deg, zoom))
@@ -584,8 +567,8 @@ def deg2tile(lat_deg, lon_deg, zoom):
 def tile2deg(xtile, ytile, zoom):
     n = 2.0 ** zoom
     lon_deg = xtile / n * 360.0 - 180.0
-    lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * ytile / n)))
-    lat_deg = math.degrees(lat_rad)
+    lat_rad = atan(sinh(pi * (1 - 2 * ytile / n)))
+    lat_deg = degrees(lat_rad)
     return lat_deg, lon_deg
 
 def sqr(x):
@@ -594,32 +577,32 @@ def sqr(x):
 def asinx(x):
     # has to bound the parameter due rounding errors n parameter calculus
     x = -1 if x < -1 else 1 if x > 1 else x
-    return math.asin(x)
+    return asin(x)
 
 def haversine_distance(lat1, lon1, lat2, lon2):
     # coordinates in degrees, result in kilometer
-    lat1 = math.radians(lat1)
-    lon1 = math.radians(lon1)
-    lat2 = math.radians(lat2)
-    lon2 = math.radians(lon2)
+    lat1 = radians(lat1)
+    lon1 = radians(lon1)
+    lat2 = radians(lat2)
+    lon2 = radians(lon2)
 
-    a = sqr(math.sin((lat1 - lat2) / 2)) + sqr(math.sin((lon1 - lon2) / 2)) * math.cos(lat1) * math.cos(lat2)
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    a = sqr(sin((lat1 - lat2) / 2)) + sqr(sin((lon1 - lon2) / 2)) * cos(lat1) * cos(lat2)
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
     d = EARTH_RADIUS * c
 
     return d
 
 def shift_longitude(lat, lon, d):
     # coordinates and result in degrees, d in kilometer
-    lat = math.radians(lat)
-    lon = math.radians(lon)
-    return math.degrees(lat), math.degrees(lon - 2 * asinx(math.sin(d / 2.0 / EARTH_RADIUS) / math.cos(lat)))
+    lat = radians(lat)
+    lon = radians(lon)
+    return degrees(lat), degrees(lon - 2 * asinx(sin(d / 2.0 / EARTH_RADIUS) / cos(lat)))
 
 def shift_latitude(lat, lon, d):
     # coordinates and result in degrees, d in kilometer
-    lat = math.radians(lat)
-    lon = math.radians(lon)
-    return math.degrees(lat - d / EARTH_RADIUS), math.degrees(lon)
+    lat = radians(lat)
+    lon = radians(lon)
+    return degrees(lat - d / EARTH_RADIUS), degrees(lon)
 
 def tile_shift_longitude(x, y, zoom, d):
     # x, y and result in tile units, d in kilometer
@@ -743,7 +726,7 @@ def circle_tiles(x, y, zoom, radius_km, tiles):
     tiles.add((int(x), int(y - radius_tu)))
 
     for xt in range(int(x0) + 1, int(x1) + 1):
-        h = math.sqrt(sqr(radius_tu) - sqr(xt - x))
+        h = sqrt(sqr(radius_tu) - sqr(xt - x))
         y0 = y - h
         y1 = y + h
         for yt in range(int(y0), int(y1) + 1):
@@ -758,7 +741,7 @@ def expand_tiles(segments, options, zoom, radius_km):
         radius_km = default_radius(x, y, zoom)
 
     for segment in segments:
-        if options.Tracks.interpolate_points is False:
+        if options.Tracks.interpolate_points == False:
             tilelist = segment
         else:
             tilelist = interpolate_points(segment)
@@ -980,6 +963,7 @@ def tile_track_generator(options, gpx_filename, zoom, radius):
     segments = track_segments(gpx_filename, zoom, options)
 
     # be sure there will be no gap between segments
+    n = len(segments)
     for index, segment in enumerate(segments[:-1]):
         next = index + 1
         segment.append(segments[next][0])
@@ -1256,14 +1240,14 @@ class TileDatabase:
 class SqliteDatabase(TileDatabase):
     def __init__(self, db_name, tile_format, url_template):
         TileDatabase.__init__(self, db_name, tile_format, url_template)
-        self.conn = sqlite3.connect(db_name, check_same_thread=False)
+        self.conn = sqlite3.connect(db_name)
         if sys.version_info < (3,):
             self.conn.text_factory = str
         else:
             self.conn.text_factory = bytes
         self.cursor = self.conn.cursor()
 
-    def execute(self, request, *args):
+    def execute(self, request, args=[]):
         self.cursor.execute(request, args)
 
     def commit(self):
@@ -1285,12 +1269,12 @@ class KaheloDatabase(SqliteDatabase):
 
     def __retrieve(self, x, y, zoom):
         # private, return the row including rowid,date
-        self.execute("SELECT rowid,date FROM tiles WHERE x = ? AND y = ? AND zoom = ?", x, y, zoom)
+        self.cursor.execute("SELECT rowid,date FROM tiles WHERE x = ? AND y = ? AND zoom = ?", (x, y, zoom))
         return self.cursor.fetchone()
 
     def __retrieve_full(self, x, y, zoom):
         # private, return the row including rowid,date,tile_blob
-        self.execute("SELECT rowid,date,tile FROM tiles WHERE x = ? AND y = ? AND zoom = ?", x, y, zoom)
+        self.cursor.execute("SELECT rowid,date,tile FROM tiles WHERE x = ? AND y = ? AND zoom = ?", (x, y, zoom))
         return self.cursor.fetchone()
 
     def exists(self, x, y, zoom):
@@ -1315,21 +1299,24 @@ class KaheloDatabase(SqliteDatabase):
     def update(self, date, x, y, zoom, tile_buffer):
         row = self.__retrieve(x, y, zoom)
         if row is not None:
-            self.execute("DELETE FROM tiles WHERE rowid = ?", row[0])
+            self.cursor.execute("DELETE FROM tiles WHERE rowid = ?", (row[0],))
         if date is None:
-            date = int(math.trunc(time()))
-        self.execute("INSERT INTO tiles VALUES (?,?,?,?,?)", date, x, y, zoom, tile_buffer)
+            date = int(trunc(time()))
+        if sys.version_info > (3,):
+            buffer = memoryview
+        buf = tile_buffer #buffer(tile_buffer)
+        self.cursor.execute("INSERT INTO tiles VALUES (?,?,?,?,?)", (date, x, y, zoom, buf)) #buffer(tile_buffer)))
 
     def delete(self, x, y, zoom):
         row = self.__retrieve(x, y, zoom)
         if row is not None:
-            self.execute("DELETE FROM tiles WHERE rowid = ?", row[0])
+            self.cursor.execute("DELETE FROM tiles WHERE rowid = ?", (row[0],))
         return True
 
     def count_tiles(self, zooms):
         R = 0
         for zoom in zooms:
-            self.execute('SELECT COUNT(*) FROM tiles WHERE zoom = ?', zoom)
+            self.execute('SELECT COUNT(*) FROM tiles WHERE zoom = ?', (zoom,))
             r = self.cursor.fetchall()
             R += r[0][0]
         return R
@@ -1337,7 +1324,7 @@ class KaheloDatabase(SqliteDatabase):
     def list_tiles(self, zooms):
         R = []
         for zoom in zooms:
-            self.execute('SELECT x,y,zoom FROM tiles WHERE zoom = ?', zoom)
+            self.execute('SELECT x,y,zoom FROM tiles WHERE zoom = ?', (zoom,))
             R.extend(self.cursor.fetchall())
         return R
 
@@ -1352,18 +1339,18 @@ class RmapsDatabase(SqliteDatabase):
         self.execute("SELECT locale FROM android_metadata")
         row = self.cursor.fetchone()
         if row is None:
-            self.execute("INSERT INTO android_metadata VALUES (?)", '',)
-            self.execute("INSERT INTO info VALUES (?,?)", 1, 17)
+            self.execute("INSERT INTO android_metadata VALUES (?)", ('',))
+            self.execute("INSERT INTO info VALUES (?,?)", (1, 17))
         self.commit()
 
     def __retrieve(self, x, y, zoom):
         # private, return the row including rowid
-        self.execute("SELECT rowid FROM tiles WHERE x = ? AND y = ? AND z = ?", x, y, 17 - zoom)
+        self.cursor.execute("SELECT rowid FROM tiles WHERE x = ? AND y = ? AND z = ?", (x, y, 17 - zoom))
         return self.cursor.fetchone()
 
     def __retrieve_full(self, x, y, zoom):
         # private, return the row including rowid,tile_blob
-        self.execute("SELECT rowid,image FROM tiles WHERE x = ? AND y = ? AND z = ?", x, y, 17 - zoom)
+        self.cursor.execute("SELECT rowid,image FROM tiles WHERE x = ? AND y = ? AND z = ?", (x, y, 17 - zoom))
         return self.cursor.fetchone()
 
     def exists(self, x, y, zoom):
@@ -1388,19 +1375,19 @@ class RmapsDatabase(SqliteDatabase):
     def update(self, date, x, y, zoom, tile):
         row = self.__retrieve(x, y, zoom)
         if row is not None:
-            self.execute("DELETE FROM tiles WHERE rowid = ?", row[0])
-        self.execute("INSERT INTO tiles VALUES (?,?,?,?,?)", x, y, 17 - zoom, 0, tile)
+            self.cursor.execute("DELETE FROM tiles WHERE rowid = ?", (row[0],))
+        self.cursor.execute("INSERT INTO tiles VALUES (?,?,?,?,?)", (x, y, 17 - zoom, 0, tile))
 
     def delete(self, x, y, zoom):
         row = self.__retrieve(x, y, zoom)
         if row is not None:
-            self.execute("DELETE FROM tiles WHERE rowid = ?", row[0])
+            self.cursor.execute("DELETE FROM tiles WHERE rowid = ?", (row[0],))
         return True
 
     def count_tiles(self, zooms):
         R = 0
         for zoom in zooms:
-            self.execute('SELECT COUNT(*) FROM tiles WHERE z = ?', 17 - zoom)
+            self.execute('SELECT COUNT(*) FROM tiles WHERE z = ?', (17 - zoom,))
             r = self.cursor.fetchall()
             R += r[0][0]
         return R
@@ -1408,7 +1395,7 @@ class RmapsDatabase(SqliteDatabase):
     def list_tiles(self, zooms):
         R = []
         for zoom in zooms:
-            self.execute('SELECT x,y,z FROM tiles WHERE z = ?', 17 - zoom)
+            self.execute('SELECT x,y,z FROM tiles WHERE z = ?', (17 - zoom,))
             rows = self.cursor.fetchall()
             R.extend([(x, y, zoom) for (x, y, z) in rows])
         return R
@@ -1424,7 +1411,7 @@ class FolderDatabase(TileDatabase):
     def exists(self, x, y, zoom):
         filename = self.filename(x, y, zoom)
         if os.path.exists(filename):
-            return True, int(math.trunc(os.path.getmtime(filename)))
+            return True, int(trunc(os.path.getmtime(filename)))
         else:
             return False, None
 
@@ -1433,7 +1420,7 @@ class FolderDatabase(TileDatabase):
         if os.path.exists(filename):
             try:
                 img = Image.open(filename)
-                return True, int(math.trunc(os.path.getmtime(filename))), img
+                return True, int(trunc(os.path.getmtime(filename))), img
             except:
                 return None, None, None
         else:
@@ -1445,7 +1432,7 @@ class FolderDatabase(TileDatabase):
             try:
                 with open(filename, 'rb') as f:
                     buffer = f.read()
-                return True, int(math.trunc(os.path.getmtime(filename))), buffer
+                return True, int(trunc(os.path.getmtime(filename))), buffer
             except:
                 return None, None, None
         else:
@@ -1493,8 +1480,8 @@ class FolderDatabase(TileDatabase):
             path = os.path.join(self.fullname, str(zoom))
             for root, dirs, files in os.walk(path):
                 if files:
-                    for filename in files:
-                        fullname = os.path.join(root, filename)
+                    for file in files:
+                        fullname = os.path.join(root, file)
                         m = regexp.search(fullname)
                         if m:
                             zoom, x, y = m.group(1,2,3)
@@ -1517,7 +1504,7 @@ class FolderDatabase(TileDatabase):
         return R
 
     def pack(self):
-        for _ in (1, 2):
+        for i in (1,2):
             for root, dirs, files in os.walk(self.fullname):
                 if not dirs and not files:
                     os.rmdir(root)
@@ -1568,6 +1555,7 @@ class DatabaseProperties:
                 f.write(self.warning)
                 self.parser.write(f)
         except Exception as e:
+            delete(self.filename)
             error('unable to write ' + self.filename + ' : ' + e)
 
 # database factory
@@ -1610,7 +1598,7 @@ def tile_trace(options, x, y, zoom, index, size, msg):
         num = index + 1
         pc1 = 100.0 * (num - 1) / size
         pc2 = 100.0 * num / size
-        pc3 = math.floor(pc2)
+        pc3 = floor(pc2)
         if pc1 < pc3:
             print('Tiles %.0f%% (%d/%d)' % (pc3, num, size))
 
@@ -1792,7 +1780,7 @@ def insert_tile(tiles, db, options, x, y, zoom, index, n, counters):
             try:
                 # no proxy handling...
                 u = requests.urlopen(url, timeout=options.insert.timeout)
-                tile_buffer = u.read()
+                tile_buffer = six.BytesIO(u.read()) #io.BytesIO(u.read())
                 u.close()
                 break
             except urllib_error.HTTPError as e:
@@ -1812,16 +1800,16 @@ def insert_tile(tiles, db, options, x, y, zoom, index, n, counters):
             pass
         else:
             try:
-                tile_image = create_image_from_blob(tile_buffer)
+                tile_image = Image.open(tile_buffer) #io.BytesIO(tile_buffer)
                 tile_buffer = create_blob_from_image(tile_image,
-                                                     db.tile_format(),
-                                                     options.tiles.jpeg_quality)
+                                                    db.tile_format(),
+                                                    options.tiles.jpeg_quality)
             except Exception as e:
-                tile_trace(options, x, y, zoom, index, n, 'image conversion error open ' + str(e))
+                tile_trace(options, x, y, zoom, index, n, 'image conversion error open ' + e)
                 counters.missing += 1
                 return
 
-        db.update(int(math.floor(time())), x, y, zoom, tile_buffer)
+        db.update(int(floor(time())), x, y, zoom, tile_buffer) #buffer(tile_buffer))
 
         counters.inserted += 1
         msg = 'updated' if exists_dst else 'inserted'
@@ -1842,10 +1830,10 @@ def tile_url(options, db, x, y, zoom):
     url = url.replace('{z}', str(zoom))
     url = url.replace('{zoom}', str(zoom))
 
-    m = re.search(r'\[(.*)\]', template)
+    m = re.search('\[(.*)\]', template)
     if m:
         stripes = m.group(1)
-        url = url.replace('[' + stripes + ']', stripes[random.randint(0, len(stripes) - 1)])
+        url = url.replace('[' + stripes + ']', stripes[randint(0, len(stripes) - 1)])
 
     return url
 
@@ -2115,68 +2103,32 @@ def makeview_tile(tiles, db, mosaic, draw, tile_width, x0, y0, x, y, zoom, optio
 
     tile_trace(options, x, y, zoom, index, n, msg)
 
-
 # -server: http tile server --------------------------------------------------
 
+def do_server(db_name, options):
+    global keep_running
+    global db
+    db = db_factory(db_name)
 
-class HTTPServerBest(HTTPServer):
+    server_address = ('127.0.0.1', options.server.port)
 
-    _continue = True
-
-    def serve_until_shutdown(self):
-        while self._continue:
-            self.handle_request()
-
-    def shutdown(self):
-        self._continue = False
-        # We fire a last request at the server in order to take it out of the
-        # while loop in `self.serve_until_shutdown`.
-        try:
-            requests.urlopen(
-                'http://%s:%s/' % (self.server_name, self.server_port))
-        except urllib_error.URLError as e:
-            # If the server is already shut down, we receive a socket error,
-            # which we ignore.
-            pass
-        self.server_close()
-
-class HTTPServerLayer(object):
-
-    host = '127.0.0.1'
-    port = 80
-
-    def start_server(self, db_name):
-        global db
-        db = db_factory(db_name)
-        self.server = HTTPServerBest((self.host, self.port), TileServerHTTPRequestHandler)
-        self.server_thread = threading.Thread(
-            target=self.server.serve_until_shutdown)
-        self.server_thread.daemon = True
-        self.server_thread.start()
-        # Wait a little as it sometimes takes a while to get the server
-        # started.
-        sleep(0.25)
-
-    def stop_server(self):
-        if self.server is None:
-            return
-        self.server.shutdown()
-        self.server_thread.join(30) # 30 -> timeout
-
-
-def do_server(db_name, port, options):
-    server = kahelo.HTTPServerLayer()
-    server.start_server(db_name)
-    return server
-
-def stop_server(server):
-    server.stop_server()
-
+    server = HTTPServer(server_address, TileServerHTTPRequestHandler)
+    print('tile server is running, ctrl-c to terminate...')
+    keep_running = True
+    while keep_running:
+        server.handle_request()
+    self.shutdown()
 
 class TileServerHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
+        global keep_running
         global db
         try:
+            if 'SHUTDOWN' in self.path:
+                keep_running = False
+                self.send_response(200)
+                return
+            
             m = re.search(r'/(\d+)/(\d+)/(\d+)\.jpg', self.path)
             if not m:
                 raise IOError
@@ -2184,7 +2136,7 @@ class TileServerHTTPRequestHandler(BaseHTTPRequestHandler):
             zoom, x, y = m.group(1,2,3)
             zoom, x, y = int(zoom), int(x), int(y)
             exists, date, img = db.retrieve(x, y, zoom)
-            #print(x, y, zoom, exists)
+            print(x, y, zoom, exists)
 
             if not exists:
                 raise IOError
@@ -2198,12 +2150,11 @@ class TileServerHTTPRequestHandler(BaseHTTPRequestHandler):
 
         except IOError:
             self.send_error(404, 'file not found')
-
-
-
+            
+def stop_server():
+    requests.urlopen('http://127.0.0.1:80/SHUTDOWN')
 
 # -stat : database statistics ------------------------------------------------
-
 
 def do_statistics(db_name, options):
     db = db_factory(db_name)
@@ -2212,7 +2163,7 @@ def do_statistics(db_name, options):
 
     maxzoomp1 = MAXZOOM + 1
     sizes = []
-    size = [[] for _ in range(maxzoomp1)]
+    size = [[] for i in range(maxzoomp1)]
     xmin = [2 ** maxzoomp1] * maxzoomp1
     ymin = [2 ** maxzoomp1] * maxzoomp1
     xmax = [0] * maxzoomp1
@@ -2239,7 +2190,7 @@ def do_statistics(db_name, options):
         slen  = decsep(len(size[zoom]))
         smin  = decsep(min(size[zoom]))
         smax  = decsep(max(size[zoom]))
-        smean = decsep(sum(size[zoom]) // len(size[zoom]))
+        smean = decsep(sum(size[zoom]) / len(size[zoom]))
         stot  = decsep(sum(size[zoom]))
         print('%4d %6s %6s %6s %8s %12s' % (zoom, slen, smin, smax, smean, stot))
 
@@ -2249,7 +2200,7 @@ def do_statistics(db_name, options):
         slen  = decsep(len(sizes))
         smin  = decsep(min(sizes))
         smax  = decsep(max(sizes))
-        smean = decsep(sum(sizes) // len(sizes))
+        smean = decsep(sum(sizes) / len(sizes))
         stot  = decsep(sum(sizes))
     print('%4s %6s %6s %6s %8s %12s' % ('all', slen, smin, smax, smean, stot))
     print('-' * 29)
@@ -2269,27 +2220,20 @@ def do_statistics(db_name, options):
 
 def create_image_from_blob(blob):
     # blob is a string containing an entire image file
-    if sys.version_info < (3,):
-        return Image.open(StringIO.StringIO(blob))
-    else:
-        return Image.open(io.BytesIO(blob))
+    return Image.open(six.BytesIO(blob)) #io.StringIO(blob))
 
 def create_blob_from_image(img, format, jpeg_quality=85):
     # img is a PIL image
-    # return buffer of image with requested format
-    # result is a buffer object or a bytes-like object
-    if sys.version_info < (3,):
-        stringIO = StringIO.StringIO()
-        save_image(img, stringIO, format, jpeg_quality)
-        return buffer(stringIO.getvalue())
-    else:
-        bytesIO = io.BytesIO()
-        save_image(img, bytesIO, format, jpeg_quality)
-        return bytesIO.getvalue()
+    # return buffer with requested format
+    # stringIO = io.StringIO()
+    # save_image(img, stringIO, format, jpeg_quality)
+    stringIO = six.BytesIO()
+    save_image(img, stringIO, format, jpeg_quality)
+    return stringIO.getvalue()
 
 def save_image(img, target, format, jpeg_quality=85):
     # img is a PIL image
-    # target is filename or StringIO/BytesIO
+    # target is filename or StringIO
     if format == 'JPG':
         save_image_to_jpg(img, target, jpeg_quality)
     elif format == 'PNG':
@@ -2357,7 +2301,7 @@ def draw_tile_width(x, y, zoom, tile, color):
     return draw_alpha_text(tile, '%.*f' % (dec, w), color)
 
 def resize_image(options, img, width):
-    if options.view.antialias is False:
+    if options.view.antialias == False:
         img = img.resize((width, width), Image.NEAREST)
     else:
         img = img.convert('RGB')
@@ -2429,8 +2373,6 @@ def kahelo(argstring=None):
     except KeyboardInterrupt:
         print('\n** Interrupted by user.\n')
     except CustomException:
-        pass
-    finally:
         pass
 
 if __name__ == "__main__":

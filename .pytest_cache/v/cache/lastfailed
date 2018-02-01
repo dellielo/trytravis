@@ -1,0 +1,8 @@
+{
+  "kahelo_test.py::test_contours": true,
+  "kahelo_test.py::test_db": true,
+  "kahelo_test.py::test_stat": true,
+  "kahelo_test.py::test_tile_coords": true,
+  "kahelo_test.py::test_view": true,
+  "kahelo_test.py::test_zoom_subdivision": true
+}
