@@ -43,8 +43,11 @@ def main():
         shell = True
         creationflags = subprocess.CREATE_NEW_CONSOLE
 
-    p = subprocess.Popen('python kahelo.py -server tests/easter.db', shell=shell, creationflags=creationflags)
-    url = 'http://127.0.0.1:80/{zoom}/{x}/{y}.jpg'
+    server = kahelo.HTTPServerLayer()
+    server.start_server(db_name)
+    # kahelo.do_server("tests/easter.db", 80, "e")
+    # p = subprocess.Popen('kahelo -server tests/easter.db', shell=shell, creationflags=creationflags)
+    url = 'http://%s:%s/{zoom}/{x}/{y}.jpg'%(server.host, server.port)
     time.sleep(1) # to let the time to write the config
 
     # make sure tests are done with known configuration
@@ -59,21 +62,21 @@ def main():
     try:
         define_tile_sets()
 
-        # for db1 in ('kahelo', 'rmaps', 'folder', 'maverick'):
-        #     for db2 in ('kahelo', 'rmaps', 'folder', 'maverick'):
-        #         print('---', db1, db2)
-        #         test_db(url, db1, 'server', db2, 'png', trace='-verbose') # jpg
+        for db1 in ('kahelo', 'rmaps', 'folder', 'maverick'):
+            for db2 in ('kahelo', 'rmaps', 'folder', 'maverick'):
+                print('---', db1, db2)
+                test_db(url, db1, 'server', db2, 'png', trace='-verbose') # jpg
         
         test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-quiet')
-        # test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-verbose')
+        test_db(url, 'rmaps', 'server', 'maverick', 'jpg', trace='-verbose')
 
         # # TODO : test -inside
 
-        # # test_stat()
-        # test_view()
-        # test_contours()
-        # test_tile_coords(db_name)
-        # test_zoom_subdivision(url)
+        # test_stat()
+        test_view()
+        test_contours()
+        test_tile_coords(db_name)
+        test_zoom_subdivision(url)
 
         if test_result is True:
             print('All tests ok.')
@@ -81,7 +84,8 @@ def main():
             print('Failure...')
 
     finally:
-        kahelo.stop_server()
+        # kahelo.stop_server()
+        server.stop_server()
         os.remove('test.gpx')
         os.remove('test2.gpx')
         os.remove('test.project')

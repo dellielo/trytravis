@@ -8,6 +8,7 @@ import argparse
 import webbrowser
 import itertools
 import random
+import threading 
 
 if sys.version_info < (3,):
     import StringIO
@@ -406,7 +407,6 @@ def configfilename():
         name = sys.argv[0]
     else:
         name = __file__
-    print(os.path.splitext(name)[0] + '.config')
     return os.path.splitext(name)[0] + '.config'
 
 
@@ -1256,7 +1256,7 @@ class TileDatabase:
 class SqliteDatabase(TileDatabase):
     def __init__(self, db_name, tile_format, url_template):
         TileDatabase.__init__(self, db_name, tile_format, url_template)
-        self.conn = sqlite3.connect(db_name)
+        self.conn = sqlite3.connect(db_name, check_same_thread=False)
         if sys.version_info < (3,):
             self.conn.text_factory = str
         else:
@@ -2119,30 +2119,63 @@ def makeview_tile(tiles, db, mosaic, draw, tile_width, x0, y0, x, y, zoom, optio
 # -server: http tile server --------------------------------------------------
 
 
-def do_server(db_name, options):
-    global keep_running
-    global db
-    db = db_factory(db_name)
+class HTTPServerBest(HTTPServer):
 
-    server_address = ('127.0.0.1', options.server.port)
+    _continue = True
 
-    server = HTTPServer(server_address, TileServerHTTPRequestHandler)
-    print('tile server is running, ctrl-c to terminate...')
-    keep_running = True
-    while keep_running:
-        server.handle_request()
+    def serve_until_shutdown(self):
+        while self._continue:
+            self.handle_request()
+
+    def shutdown(self):
+        self._continue = False
+        # We fire a last request at the server in order to take it out of the
+        # while loop in `self.serve_until_shutdown`.
+        try:
+            requests.urlopen(
+                'http://%s:%s/' % (self.server_name, self.server_port))
+        except urllib_error.URLError as e:
+            # If the server is already shut down, we receive a socket error,
+            # which we ignore.
+            pass
+        self.server_close()
+
+class HTTPServerLayer(object):
+
+    host = '127.0.0.1'
+    port = 80
+
+    def start_server(self, db_name):
+        global db
+        db = db_factory(db_name)
+        self.server = HTTPServerBest((self.host, self.port), TileServerHTTPRequestHandler)
+        self.server_thread = threading.Thread(
+            target=self.server.serve_until_shutdown)
+        self.server_thread.daemon = True
+        self.server_thread.start()
+        # Wait a little as it sometimes takes a while to get the server
+        # started.
+        sleep(0.25)
+
+    def stop_server(self):
+        if self.server is None:
+            return
+        self.server.shutdown()
+        self.server_thread.join()
+
+def do_server(db_name, port, options):
+    server = kahelo.HTTPServerLayer()
+    server.start_server(db_name)
+    return server
+
+def stop_server(server):
+    server.stop_server()
+
 
 class TileServerHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        global keep_running
         global db
         try:
-            if 'SHUTDOWN' in self.path:
-                self.send_response(200)
-                self.end_headers() # Remote end closed connection without response
-                keep_running = False
-                return
-
             m = re.search(r'/(\d+)/(\d+)/(\d+)\.jpg', self.path)
             if not m:
                 raise IOError
@@ -2165,8 +2198,7 @@ class TileServerHTTPRequestHandler(BaseHTTPRequestHandler):
         except IOError:
             self.send_error(404, 'file not found')
 
-def stop_server():
-    requests.urlopen('http://127.0.0.1:80/SHUTDOWN')
+
 
 
 # -stat : database statistics ------------------------------------------------
